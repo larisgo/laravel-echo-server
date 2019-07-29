@@ -1,0 +1,6 @@
+/src
+/vendor
+/bin
+/go.sum
+/laravel-echo-server.lock
+/laravel-echo-server.json
