@@ -1,6 +1,8 @@
 # Laravel Echo Server
 
-NodeJs server for Laravel Echo broadcasting with Socket.io.
+[![GoDoc](https://godoc.org/github.com/larisgo/laravel-echo-server?status.svg)](https://godoc.org/github.com/larisgo/laravel-echo-server)
+
+Golang server for Laravel Echo broadcasting with Socket.io.
 
 ## System Requirements
 
