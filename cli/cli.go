@@ -357,9 +357,9 @@ func (this *Cli) Start(args *Args) {
 			log.Fatal(err)
 		}
 		// kill proccess
-		if lockProcessLen := len(lockProcess); lockProcessLen > 0 {
+		if len(lockProcess) > 0 {
 			pid, n := binary.Varint(lockProcess)
-			if n == lockProcessLen {
+			if n > 0 {
 				process, err := os.FindProcess(int(pid))
 				if err == nil {
 					if args.Force {
@@ -411,9 +411,9 @@ func (this *Cli) Stop(args *Args) {
 			log.Fatal(err)
 		}
 		// kill proccess
-		if lockProcessLen := len(lockProcess); lockProcessLen > 0 {
+		if len(lockProcess) > 0 {
 			pid, n := binary.Varint(lockProcess)
-			if n == lockProcessLen {
+			if n > 0 {
 				process, err := os.FindProcess(int(pid))
 				if err == nil {
 					os.Remove(lockFile)
