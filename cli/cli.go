@@ -123,7 +123,7 @@ func (this *Cli) resolveEnvFileOptions(config options.Config) options.Config {
 	}
 
 	if SERVER_DEBUG, ok := os.LookupEnv("LARAVEL_ECHO_SERVER_DEBUG"); ok && !this.EnvIsNull(SERVER_DEBUG) {
-		config.DevMode = this.EnvToEmpty(this.EnvToBool(SERVER_DEBUG))
+		config.DevMode = this.EnvToBool(SERVER_DEBUG)
 	}
 
 	if SERVER_REDIS_HOST, ok := os.LookupEnv("LARAVEL_ECHO_SERVER_REDIS_HOST"); ok && !this.EnvIsNull(SERVER_REDIS_HOST) {
