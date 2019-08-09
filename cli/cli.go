@@ -110,34 +110,36 @@ func (this *Cli) resolveEnvFileOptions(config options.Config) options.Config {
 		return config
 	}
 
-	if AUTH_HOST := os.Getenv("LARAVEL_ECHO_SERVER_AUTH_HOST"); AUTH_HOST != "" && !this.EnvIsNull(AUTH_HOST) {
-		config.AuthHost = AUTH_HOST
+	if SERVER_AUTH_HOST, ok := os.LookupEnv("LARAVEL_ECHO_SERVER_AUTH_HOST"); ok && !this.EnvIsNull(SERVER_AUTH_HOST) {
+		config.AuthHost = this.EnvToEmpty(SERVER_AUTH_HOST)
 	}
 
-	if SERVER_HOST := os.Getenv("LARAVEL_ECHO_SERVER_HOST"); SERVER_HOST != "" && !this.EnvIsNull(SERVER_HOST) {
-		config.Host = SERVER_HOST
+	if SERVER_HOST, ok := os.LookupEnv("LARAVEL_ECHO_SERVER_HOST"); ok && !this.EnvIsNull(SERVER_HOST) {
+		config.Host = this.EnvToEmpty(SERVER_HOST)
 	}
 
-	if SERVER_PORT := os.Getenv("LARAVEL_ECHO_SERVER_PORT"); SERVER_PORT != "" && !this.EnvIsNull(SERVER_PORT) {
-		config.Port = SERVER_PORT
+	if SERVER_PORT, ok := os.LookupEnv("LARAVEL_ECHO_SERVER_PORT"); ok && !this.EnvIsNull(SERVER_PORT) {
+		config.Port = this.EnvToEmpty(SERVER_PORT)
 	}
 
-	if SERVER_DEBUG := os.Getenv("LARAVEL_ECHO_SERVER_DEBUG"); SERVER_DEBUG != "" && !this.EnvIsNull(SERVER_DEBUG) {
-		config.DevMode = this.EnvToBool(SERVER_DEBUG)
+	if SERVER_DEBUG, ok := os.LookupEnv("LARAVEL_ECHO_SERVER_DEBUG"); ok && !this.EnvIsNull(SERVER_DEBUG) {
+		config.DevMode = this.EnvToEmpty(this.EnvToBool(SERVER_DEBUG))
 	}
 
-	if SERVER_REDIS_HOST := os.Getenv("LARAVEL_ECHO_SERVER_REDIS_HOST"); SERVER_REDIS_HOST != "" && !this.EnvIsNull(SERVER_REDIS_HOST) {
-		config.DatabaseConfig.Redis.Host = SERVER_REDIS_HOST
+	if SERVER_REDIS_HOST, ok := os.LookupEnv("LARAVEL_ECHO_SERVER_REDIS_HOST"); ok && !this.EnvIsNull(SERVER_REDIS_HOST) {
+		config.DatabaseConfig.Redis.Host = this.EnvToEmpty(SERVER_REDIS_HOST)
 	}
 
-	if SERVER_REDIS_PORT := os.Getenv("LARAVEL_ECHO_SERVER_REDIS_PORT"); SERVER_REDIS_PORT != "" && !this.EnvIsNull(SERVER_REDIS_PORT) {
-		config.DatabaseConfig.Redis.Port = SERVER_REDIS_PORT
+	if SERVER_REDIS_PORT, ok := os.LookupEnv("LARAVEL_ECHO_SERVER_REDIS_PORT"); ok && !this.EnvIsNull(SERVER_REDIS_PORT) {
+		config.DatabaseConfig.Redis.Port = this.EnvToEmpty(SERVER_REDIS_PORT)
 	}
 
-	if SERVER_REDIS_PASSWORD := os.Getenv("LARAVEL_ECHO_SERVER_REDIS_PASSWORD"); SERVER_REDIS_PASSWORD != "" && !this.EnvIsNull(SERVER_REDIS_PASSWORD) {
-		if !this.EnvIsNull(SERVER_REDIS_PASSWORD) {
-			config.DatabaseConfig.Redis.Password = this.EnvToEmpty(SERVER_REDIS_PASSWORD)
-		}
+	if SERVER_REDIS_PASSWORD, ok := os.LookupEnv("LARAVEL_ECHO_SERVER_REDIS_PASSWORD"); ok && !this.EnvIsNull(SERVER_REDIS_PASSWORD) {
+		config.DatabaseConfig.Redis.Password = this.EnvToEmpty(SERVER_REDIS_PASSWORD)
+	}
+
+	if SERVER_PREFIX, ok := os.LookupEnv("LARAVEL_ECHO_SERVER_PREFIX"); ok && !this.EnvIsNull(SERVER_PREFIX) {
+		config.DatabaseConfig.Prefix = this.EnvToEmpty(SERVER_PREFIX)
 	}
 
 	return config
