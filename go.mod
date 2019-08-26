@@ -3,7 +3,7 @@ module github.com/larisgo/laravel-echo-server
 go 1.12
 
 replace (
-	github.com/pschlump/socketio => github.com/zishang520/socketio v2.0.1+incompatible
+	github.com/pschlump/socketio => github.com/zishang520/socketio v2.0.2+incompatible
 	github.com/tcnksm/go-input => github.com/zishang520/go-input v1.0.0
 )
 

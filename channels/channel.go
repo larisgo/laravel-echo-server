@@ -112,7 +112,7 @@ func (this *Channel) Leave(socket socketio.Socket, channel string, reason string
 		socket.Leave(channel)
 
 		if this.options.DevMode {
-			log.Info(fmt.Sprintf(`%S left channel: %s (%s)`, socket.Id(), channel, reason))
+			log.Info(fmt.Sprintf(`%s left channel: %s (%s)`, socket.Id(), channel, reason))
 		}
 	}
 }

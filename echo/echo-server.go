@@ -198,6 +198,10 @@ func (this *EchoServer) OnConnect() {
 		this.OnClientEvent(socket)
 		return nil
 	})
+	this.server.Io.On("error", func(socket socketio.Socket, err error) error {
+		log.Error(err)
+		return nil
+	})
 }
 
 /**
