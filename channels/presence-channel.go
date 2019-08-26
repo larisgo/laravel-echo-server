@@ -55,7 +55,7 @@ func (this *PresenceChannel) GetMembers(channel string) ([]*types.Member, error)
 	if members, ok := members_interface.([]*types.Member); ok {
 		return members, nil
 	}
-	return nil, err
+	return nil, nil
 }
 
 /**
@@ -82,9 +82,6 @@ func (this *PresenceChannel) IsMember(channel string, member *types.Member) (boo
  * Remove inactive channel members from the presence channel.
  */
 func (this *PresenceChannel) RemoveInactive(channel string, members []*types.Member) ([]*types.Member, error) {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
 	clients := this.io.Clients(channel)
 	tmp_members := []*types.Member{}
 	for _, member := range members {
@@ -124,7 +121,6 @@ func (this *PresenceChannel) Join(socket socketio.Socket, channel string, member
 		}
 		return nil, errors.NewError(`Unable to join channel. Member data for presence channel missing`)
 	}
-	return nil, nil
 	is_member, err := this.IsMember(channel, member)
 	if err != nil {
 		if this.options.DevMode {

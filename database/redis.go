@@ -45,9 +45,9 @@ func NewRedisDatabase(Options options.Config) DatabaseDriver {
 func (this *RedisDatabase) Get(key string) (interface{}, error) {
 	data, err := this.redis.Get(key).Result()
 	if err != nil {
-		// if err == redis.Nil {
-		// 	return nil, nil
-		// }
+		if err == redis.Nil {
+			return nil, nil
+		}
 		return nil, err
 	}
 	var json_data interface{}
