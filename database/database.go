@@ -30,7 +30,7 @@ func NewDatabase(Options options.Config) DatabaseDriver {
 /**
  * Get a value from the database.
  */
-func (this *Database) Get(key string) (interface{}, error) {
+func (this *Database) Get(key string) ([]byte, error) {
 	return this.driver.Get(key)
 }
 

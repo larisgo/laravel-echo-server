@@ -41,7 +41,7 @@ func NewSQLiteDatabase(Options options.Config) DatabaseDriver {
 /**
  * Retrieve data from redis.
  */
-func (this *SQLiteDatabase) Get(key string) (interface{}, error) {
+func (this *SQLiteDatabase) Get(key string) ([]byte, error) {
 	rows, err := this.sqlite.Query("SELECT value FROM key_value WHERE key = ? LIMIT 1", key)
 	if err != nil {
 		return nil, err
@@ -58,11 +58,7 @@ func (this *SQLiteDatabase) Get(key string) (interface{}, error) {
 		return nil, err
 	}
 
-	var json_data interface{}
-	if err := json.Unmarshal([]byte(value), &json_data); err != nil {
-		return nil, err
-	}
-	return json_data, nil
+	return []byte(value), nil
 }
 
 /**

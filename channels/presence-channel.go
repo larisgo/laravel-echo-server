@@ -1,6 +1,7 @@
 package channels
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/larisgo/laravel-echo-server/database"
 	"github.com/larisgo/laravel-echo-server/errors"
@@ -48,14 +49,15 @@ func NewPresenceChannel(io *socketio.Server, Options options.Config) *PresenceCh
  * Get the members of a presence channel.
  */
 func (this *PresenceChannel) GetMembers(channel string) ([]*types.Member, error) {
-	members_interface, err := this.db.Get(fmt.Sprintf(`%s:members`, channel))
+	members_byte, err := this.db.Get(fmt.Sprintf(`%s:members`, channel))
 	if err != nil {
 		return nil, err
 	}
-	if members, ok := members_interface.([]*types.Member); ok {
-		return members, nil
+	var members []*types.Member
+	if err := json.Unmarshal(members_byte, &members); err != nil {
+		return nil, err
 	}
-	return nil, nil
+	return members, nil
 }
 
 /**

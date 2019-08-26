@@ -42,7 +42,7 @@ func NewRedisDatabase(Options options.Config) DatabaseDriver {
 /**
  * Retrieve data from redis.
  */
-func (this *RedisDatabase) Get(key string) (interface{}, error) {
+func (this *RedisDatabase) Get(key string) ([]byte, error) {
 	data, err := this.redis.Get(key).Result()
 	if err != nil {
 		if err == redis.Nil {
@@ -50,11 +50,8 @@ func (this *RedisDatabase) Get(key string) (interface{}, error) {
 		}
 		return nil, err
 	}
-	var json_data interface{}
-	if err := json.Unmarshal([]byte(data), &json_data); err != nil {
-		return nil, err
-	}
-	return json_data, nil
+
+	return []byte(data), nil
 }
 
 /**
@@ -72,7 +69,7 @@ func (this *RedisDatabase) Set(key string, value interface{}) error {
 		result, err := json.Marshal(map[string]map[string]interface{}{
 			"event": map[string]interface{}{
 				"channel": key,
-				"members": data,
+				"members": value,
 			},
 		})
 		if err != nil {
