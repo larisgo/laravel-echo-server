@@ -99,7 +99,7 @@ func (this *PresenceChannel) RemoveInactive(channel string, members []*types.Mem
 
 func (this *PresenceChannel) uniq(members []*types.Member) []*types.Member {
 	result := []*types.Member{}
-	tempMap := map[string]bool{} // 存放不重复主键
+	tempMap := map[int64]bool{} // 存放不重复主键
 	for _, e := range members {
 		l := len(tempMap)
 		tempMap[e.UserId] = true

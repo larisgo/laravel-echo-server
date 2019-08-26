@@ -14,7 +14,7 @@ type Data struct {
 
 type Member struct {
 	SocketId string      `json:"socket_id"`
-	UserId   string      `json:"user_id"`
+	UserId   int64       `json:"user_id"`
 	UserInfo interface{} `json:"user_info"`
 }
 

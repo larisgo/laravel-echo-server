@@ -1,6 +1,7 @@
 package channels
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/larisgo/laravel-echo-server/log"
 	"github.com/larisgo/laravel-echo-server/options"
@@ -132,30 +133,25 @@ func (this *Channel) IsPrivate(channel string) bool {
  * Join private channel, emit data to presence channels.
  */
 func (this *Channel) JoinPrivate(socket socketio.Socket, data types.Data) {
-	res, err := this.Private.Authenticate(socket, data)
+	res, code, err := this.Private.Authenticate(socket, data)
 	if err != nil {
 		if this.options.DevMode {
 			log.Error(err)
 		}
-		socket.Emit("subscription_error", data.Channel, 403)
+		socket.Emit("subscription_error", data.Channel, code)
 	} else {
 		socket.Join(data.Channel)
 		if this.IsPresence(data.Channel) {
-			if res_channel_data, res_channel_data_ok := res.(types.AuthenticateData); res_channel_data_ok {
-				// var tmp_member_interface interface{}
-				// if member_interface, member_has := res_map_interface["channel_data"]; member_has {
-				// 	if member_string, member_string_ok := member_interface.(string); member_string_ok {
-				// 		if err := json.Unmarshal([]byte(member_string), &tmp_member_interface); err != nil {
-				// 			tmp_member_interface = member_interface
-				// 			// return nil, err
-				// 		}
-				// 	}
-				// }
-				_, err := this.Presence.Join(socket, data.Channel, &res_channel_data.ChannelData)
-				if err != nil {
+			var res_channel_data types.AuthenticateData
+			if err := json.Unmarshal(res, &res_channel_data); err == nil {
+				if _, err := this.Presence.Join(socket, data.Channel, &res_channel_data.ChannelData); err != nil {
 					if this.options.DevMode {
 						log.Error(err)
 					}
+				}
+			} else {
+				if this.options.DevMode {
+					log.Error(err)
 				}
 			}
 		}

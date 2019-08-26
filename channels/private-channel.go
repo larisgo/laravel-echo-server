@@ -44,12 +44,12 @@ func NewPrivateChannel(Options options.Config) *PrivateChannel {
 /**
  * Send authentication request to application server.
  */
-func (this *PrivateChannel) Authenticate(socket socketio.Socket, data types.Data) (interface{}, error) {
+func (this *PrivateChannel) Authenticate(socket socketio.Socket, data types.Data) ([]byte, int, error) {
 	body, err := json.Marshal(map[string]string{
 		"channel_name": data.Channel,
 	})
 	if err != nil {
-		return nil, err
+		return nil, 500, err
 	}
 	options := &http.Options{
 		Method: "POST",
@@ -74,13 +74,6 @@ func (this *PrivateChannel) Authenticate(socket socketio.Socket, data types.Data
 func (this *PrivateChannel) authHost(socket socketio.Socket) string {
 	this.mu.RLock()
 	defer this.mu.RUnlock()
-
-	// var authHosts_interface interface{}
-	// if this.options.AuthHost != nil {
-	// 	authHosts_interface = this.options.AuthHost
-	// } else {
-	// 	authHosts_interface = this.options.Host
-	// }
 
 	authHosts := options.Hosts{}
 	switch hosts := this.options.AuthHost.(type) {
@@ -131,7 +124,7 @@ func (this *PrivateChannel) hasMatchingHost(referer *url.URL, host string) bool 
 /**
  * Send a request to the server.
  */
-func (this *PrivateChannel) serverRequest(socket socketio.Socket, options *http.Options, channel_name string) (interface{}, error) {
+func (this *PrivateChannel) serverRequest(socket socketio.Socket, options *http.Options, channel_name string) ([]byte, int, error) {
 	options.Headers = this.prepareHeaders(socket, options)
 	response, err := this.client.Request(options)
 	if err != nil {
@@ -139,24 +132,19 @@ func (this *PrivateChannel) serverRequest(socket socketio.Socket, options *http.
 			log.Error(fmt.Sprintf(`Error authenticating %s for %s`, socket.Id(), channel_name))
 			log.Error(err)
 		}
-		return nil, err
+		return []byte{}, 502, err
 	}
 	if response.StatusCode != 200 {
 		if this.options.DevMode {
 			log.Warning(fmt.Sprintf(`%s could not be authenticated to %s`, socket.Id(), channel_name))
 			log.Error(string(response.BodyBytes))
 		}
-		return nil, errors.NewError(fmt.Sprintf(`Client can not be authenticated, got HTTP status %d`, response.StatusCode))
+		return []byte{}, response.StatusCode, errors.NewError(fmt.Sprintf(`Client can not be authenticated, got HTTP status %d`, response.StatusCode))
 	}
 	if this.options.DevMode {
 		log.Info(fmt.Sprintf(`%s authenticated for: %s`, socket.Id(), channel_name))
 	}
-	var body interface{}
-	if err := json.Unmarshal(response.BodyBytes, &body); err != nil {
-		body = string(response.BodyBytes)
-		// return nil, err
-	}
-	return body, nil
+	return response.BodyBytes, response.StatusCode, nil
 }
 
 /**

@@ -61,10 +61,10 @@ func (this *HttpSubscriber) Subscribe(callback Broadcast) {
  * @param  {any} req
  * @param  {any} res
  * @param  {any} body
- * @param  {Function} broadcast
+ * @param  {Broadcast} callback
  * @return {boolean}
  */
-func (this *HttpSubscriber) handleData(w http.ResponseWriter, r *http.Request, router httprouter.Params, broadcast Broadcast) error {
+func (this *HttpSubscriber) handleData(w http.ResponseWriter, r *http.Request, router httprouter.Params, callback Broadcast) error {
 	// body = JSON.parse(Buffer.concat(body).toString());
 	post_data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -102,7 +102,7 @@ func (this *HttpSubscriber) handleData(w http.ResponseWriter, r *http.Request, r
 		}
 		for _, channel := range channels {
 			// sync
-			broadcast(strings.TrimPrefix(channel, this.options.DatabaseConfig.Prefix), message)
+			callback(strings.TrimPrefix(channel, this.options.DatabaseConfig.Prefix), message)
 		}
 	} else {
 		this.badResponse(w, r, `Event must include channel, event name and data`)

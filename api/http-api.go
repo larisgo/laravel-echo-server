@@ -163,7 +163,7 @@ func (this *HttpApi) GetChannels(w http.ResponseWriter, r *http.Request, router 
 
 func (this *HttpApi) uniq(members []*types.Member) []*types.Member {
 	result := []*types.Member{}
-	tempMap := map[string]bool{} // 存放不重复主键
+	tempMap := map[int64]bool{} // 存放不重复主键
 	for _, e := range members {
 		l := len(tempMap)
 		tempMap[e.UserId] = true
@@ -226,7 +226,7 @@ func (this *HttpApi) GetChannelUsers(w http.ResponseWriter, r *http.Request, rou
 		log.Error(err)
 	}
 
-	users := []string{}
+	users := []int64{}
 	for _, member := range this.uniq(members) {
 		users = append(users, member.UserId)
 	}
