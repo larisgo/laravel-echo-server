@@ -44,7 +44,7 @@ func NewPrivateChannel(Options options.Config) *PrivateChannel {
 /**
  * Send authentication request to application server.
  */
-func (this *PrivateChannel) Authenticate(socket socketio.Socket, data types.Data) ([]byte, int, error) {
+func (this *PrivateChannel) Authenticate(socket socketio.Socket, data types.Data) (interface{}, int, error) {
 	body, err := json.Marshal(map[string]string{
 		"channel_name": data.Channel,
 	})
@@ -124,7 +124,7 @@ func (this *PrivateChannel) hasMatchingHost(referer *url.URL, host string) bool 
 /**
  * Send a request to the server.
  */
-func (this *PrivateChannel) serverRequest(socket socketio.Socket, options *http.Options, channel_name string) ([]byte, int, error) {
+func (this *PrivateChannel) serverRequest(socket socketio.Socket, options *http.Options, channel_name string) (interface{}, int, error) {
 	options.Headers = this.prepareHeaders(socket, options)
 	response, err := this.client.Request(options)
 	if err != nil {
@@ -132,19 +132,29 @@ func (this *PrivateChannel) serverRequest(socket socketio.Socket, options *http.
 			log.Error(fmt.Sprintf(`Error authenticating %s for %s`, socket.Id(), channel_name))
 			log.Error(err)
 		}
-		return []byte{}, 502, err
+		return nil, 502, err
 	}
 	if response.StatusCode != 200 {
 		if this.options.DevMode {
 			log.Warning(fmt.Sprintf(`%s could not be authenticated to %s`, socket.Id(), channel_name))
 			log.Error(string(response.BodyBytes))
 		}
-		return []byte{}, response.StatusCode, errors.NewError(fmt.Sprintf(`Client can not be authenticated, got HTTP status %d`, response.StatusCode))
+		return nil, response.StatusCode, errors.NewError(fmt.Sprintf(`Client can not be authenticated, got HTTP status %d`, response.StatusCode))
 	}
 	if this.options.DevMode {
 		log.Info(fmt.Sprintf(`%s authenticated for: %s`, socket.Id(), channel_name))
 	}
-	return response.BodyBytes, response.StatusCode, nil
+
+	var res_channel_data types.AuthenticateData
+	if err := json.Unmarshal(response.BodyBytes, &res_channel_data); err != nil {
+		var res_bool bool
+		if err := json.Unmarshal(response.BodyBytes, &res_bool); err != nil {
+			return nil, 500, err
+		}
+		return res_bool, response.StatusCode, nil
+	}
+
+	return res_channel_data, response.StatusCode, nil
 }
 
 /**

@@ -1,7 +1,6 @@
 package channels
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/larisgo/laravel-echo-server/log"
 	"github.com/larisgo/laravel-echo-server/options"
@@ -142,16 +141,11 @@ func (this *Channel) JoinPrivate(socket socketio.Socket, data types.Data) {
 	} else {
 		socket.Join(data.Channel)
 		if this.IsPresence(data.Channel) {
-			var res_channel_data types.AuthenticateData
-			if err := json.Unmarshal(res, &res_channel_data); err == nil {
+			if res_channel_data, is_authenticatedata := res.(types.AuthenticateData); is_authenticatedata {
 				if _, err := this.Presence.Join(socket, data.Channel, &res_channel_data.ChannelData); err != nil {
 					if this.options.DevMode {
 						log.Error(err)
 					}
-				}
-			} else {
-				if this.options.DevMode {
-					log.Error(err)
 				}
 			}
 		}

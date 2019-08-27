@@ -53,6 +53,9 @@ func (this *PresenceChannel) GetMembers(channel string) ([]*types.Member, error)
 	if err != nil {
 		return nil, err
 	}
+	if len(members_byte) == 0 {
+		return nil, nil
+	}
 	var members []*types.Member
 	if err := json.Unmarshal(members_byte, &members); err != nil {
 		return nil, err

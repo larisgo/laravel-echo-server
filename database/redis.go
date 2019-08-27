@@ -43,15 +43,14 @@ func NewRedisDatabase(Options options.Config) DatabaseDriver {
  * Retrieve data from redis.
  */
 func (this *RedisDatabase) Get(key string) ([]byte, error) {
-	data, err := this.redis.Get(key).Result()
+	data, err := this.redis.Get(key).Bytes()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, nil
 		}
 		return nil, err
 	}
-
-	return []byte(data), nil
+	return data, nil
 }
 
 /**
