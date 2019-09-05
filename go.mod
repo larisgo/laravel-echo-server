@@ -1,6 +1,6 @@
 module github.com/larisgo/laravel-echo-server
 
-go 1.12
+go 1.13
 
 replace (
 	github.com/pschlump/socketio => github.com/zishang520/socketio v2.0.2+incompatible
