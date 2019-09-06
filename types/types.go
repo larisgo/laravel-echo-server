@@ -21,3 +21,7 @@ type Member struct {
 type AuthenticateData struct {
 	ChannelData Member `json:"channel_data"`
 }
+
+type PocessLockData struct {
+	Process int `json:"process"`
+}

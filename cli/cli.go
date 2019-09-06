@@ -64,9 +64,7 @@ func (this *Cli) Configure(args *Args) {
 
 func (this *Cli) EnvIsNull(v string) bool {
 	switch strings.ToLower(v) {
-	case "null":
-		return true
-	case "(null)":
+	case "null", "(null)":
 		return true
 	}
 	return false
@@ -74,11 +72,7 @@ func (this *Cli) EnvIsNull(v string) bool {
 
 func (this *Cli) EnvIsEmpty(v string) bool {
 	switch strings.ToLower(v) {
-	case "":
-		return true
-	case "empty":
-		return true
-	case "(empty)":
+	case "", "empty", "(empty)":
 		return true
 	}
 	return false
@@ -93,9 +87,7 @@ func (this *Cli) EnvToEmpty(v string) string {
 
 func (this *Cli) EnvToBool(v string) bool {
 	switch strings.ToLower(v) {
-	case "true":
-		return true
-	case "(true)":
+	case "true", "(true)":
 		return true
 	}
 	return false
@@ -358,34 +350,35 @@ func (this *Cli) Start(args *Args) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		// kill proccess
-		if len(lockProcess) > 0 {
-			pid, n := binary.Varint(lockProcess)
-			if n > 0 {
-				process, err := os.FindProcess(int(pid))
-				if err == nil {
-					if args.Force {
-						if err := process.Signal(syscall.SIGTERM); err != nil {
-							log.Fatal(err)
-						}
-						log.Warning(fmt.Sprintf(`Warning: Closing process %d because you used the "--force" option.`, pid))
-					} else {
-						log.Fatal(`Error: There is already a server running! Use the option \"--force\" to stop it and start another one.`)
+		processInfo := types.PocessLockData{}
+		if err := json.Unmarshal(lockProcess, &processInfo); err == nil {
+			// kill proccess
+			if process, err := os.FindProcess(processInfo.Process); err == nil {
+				if args.Force {
+					if err := process.Signal(syscall.SIGTERM); err != nil {
+						log.Fatal(err)
 					}
+					log.Warning(fmt.Sprintf(`Warning: Closing process %d because you used the "--force" option.`, processInfo.Process))
+				} else {
+					log.Fatal(`Error: There is already a server running! Use the option "--force" to stop it and start another one.`)
 				}
 			}
 		}
 	}
 
-	if err := ioutil.WriteFile(lockFile, []byte(fmt.Sprintf("%d", os.Getpid())), 0644); err != nil {
+	pid_t, err := json.MarshalIndent(types.PocessLockData{Process: os.Getpid()}, "", "    ")
+	if err != nil {
 		log.Fatal(err)
 	}
-	//创建监听退出chan
-	c := make(chan os.Signal)
-	//监听指定信号 ctrl+c kill
-	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	if err := ioutil.WriteFile(lockFile, pid_t, 0644); err != nil {
+		log.Fatal(err)
+	}
+
+	SignalC := make(chan os.Signal)
+
+	signal.Notify(SignalC, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
-		for s := range c {
+		for s := range SignalC {
 			switch s {
 			case syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT:
 				this.Exit(lockFile)
@@ -412,22 +405,19 @@ func (this *Cli) Stop(args *Args) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		// kill proccess
-		if len(lockProcess) > 0 {
-			pid, n := binary.Varint(lockProcess)
-			if n > 0 {
-				process, err := os.FindProcess(int(pid))
-				if err == nil {
-					os.Remove(lockFile)
-					if err := process.Signal(syscall.SIGTERM); err != nil {
-						log.Fatal(err)
-					}
-					log.Success(`Closed the running server.`)
-				} else {
-					log.Error(`No running servers to close.`)
-				}
-			}
+		processInfo := types.PocessLockData{}
+		if err := json.Unmarshal(lockProcess, &processInfo); err != nil {
+			log.Fatal(err)
 		}
+		// kill proccess
+		if process, err := os.FindProcess(processInfo.Process); err != nil {
+			log.Error(`No running servers to close.`)
+		}
+		os.Remove(lockFile)
+		if err := process.Signal(syscall.SIGTERM); err != nil {
+			log.Fatal(err)
+		}
+		log.Success(`Closed the running server.`)
 	} else {
 		log.Error(`Error: Could not find any lock file.`)
 	}
