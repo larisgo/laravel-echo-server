@@ -96,8 +96,8 @@ func (this *Cli) EnvToBool(v string) bool {
 /**
  * Inject the .env vars into options if they exist.
  */
-func (this *Cli) resolveEnvFileOptions(config options.Config) options.Config {
-	if err := godotenv.Load(); err != nil {
+func (this *Cli) resolveEnvFileOptions(config options.Config, args *Args) options.Config {
+	if err := godotenv.Load(this.getConfigFile(".env", args.Dir)); err != nil {
 		// log.Fatal("Error loading .env file")
 		return config
 	}
@@ -339,7 +339,7 @@ func (this *Cli) Start(args *Args) {
 	if !this.FileExists(configFile) {
 		log.Fatal(fmt.Sprintf(`Error: The config file [%s] cound not be found.`, args.Config))
 	}
-	config := this.readConfigFile(configFile)
+	config := this.readConfigFile(configFile, args)
 	if args.Dev {
 		config.DevMode = true
 	}
@@ -356,9 +356,10 @@ func (this *Cli) Start(args *Args) {
 			if process, err := os.FindProcess(processInfo.Process); err == nil {
 				if args.Force {
 					if err := process.Signal(syscall.SIGTERM); err != nil {
-						log.Fatal(err)
+						log.Error(err)
+					} else {
+						log.Warning(fmt.Sprintf(`Warning: Closing process %d because you used the "--force" option.`, processInfo.Process))
 					}
-					log.Warning(fmt.Sprintf(`Warning: Closing process %d because you used the "--force" option.`, processInfo.Process))
 				} else {
 					log.Fatal(`Error: There is already a server running! Use the option "--force" to stop it and start another one.`)
 				}
@@ -457,7 +458,11 @@ func (this *Cli) createAppId() string {
  * Add a registered referrer.
  */
 func (this *Cli) ClientAdd(args *Args) {
-	config := this.readConfigFile(this.getConfigFile(args.Config, args.Dir))
+	configFile := this.getConfigFile(args.Config, args.Dir)
+	if !this.FileExists(configFile) {
+		log.Fatal(fmt.Sprintf(`Error: The config file [%s] cound not be found.`, args.Config))
+	}
+	config := this.readConfigFile(configFile, args)
 	appId := ""
 	if len(args.Args) > 0 {
 		appId = args.Args[0]
@@ -503,7 +508,11 @@ func (this *Cli) ClientAdd(args *Args) {
  * Remove a registered referrer.
  */
 func (this *Cli) ClientRemove(args *Args) {
-	config := this.readConfigFile(this.getConfigFile(args.Config, args.Dir))
+	configFile := this.getConfigFile(args.Config, args.Dir)
+	if !this.FileExists(configFile) {
+		log.Fatal(fmt.Sprintf(`Error: The config file [%s] cound not be found.`, args.Config))
+	}
+	config := this.readConfigFile(configFile, args)
 	appId := ""
 	if len(args.Args) > 0 {
 		appId = args.Args[0]
@@ -558,7 +567,7 @@ func (this *Cli) getConfigFile(file string, dir string) string {
 /**
  * Tries to read a config file
  */
-func (this *Cli) readConfigFile(file string) options.Config {
+func (this *Cli) readConfigFile(file string, args *Args) options.Config {
 	var data options.Config
 
 	bytes_data, err := ioutil.ReadFile(file)
@@ -569,5 +578,5 @@ func (this *Cli) readConfigFile(file string) options.Config {
 		log.Fatal(err)
 	}
 
-	return this.resolveEnvFileOptions(data)
+	return this.resolveEnvFileOptions(data, args)
 }
