@@ -2,7 +2,6 @@ package cli
 
 import (
 	"crypto/rand"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"github.com/larisgo/laravel-echo-server/errors"
 	"github.com/larisgo/laravel-echo-server/log"
 	"github.com/larisgo/laravel-echo-server/options"
+	"github.com/larisgo/laravel-echo-server/types"
 	"github.com/tcnksm/go-input"
 	"io/ioutil"
 	"os"
@@ -53,7 +53,7 @@ func (this *Cli) Configure(args *Args) {
 	if err := this.saveConfig(config, file); err != nil {
 		log.Fatal(err)
 	} else {
-		log.Success(fmt.Sprintf("Configuration file saved. Run [laravel-echo-server start%s] to run server.", (func() string {
+		log.Success(fmt.Sprintf("Configuration file saved. Run [%s start%s] to run server.", Filename(), (func() string {
 			if file != "laravel-echo-server.json" {
 				return fmt.Sprintf(" --config=%s", file)
 			}
@@ -412,12 +412,13 @@ func (this *Cli) Stop(args *Args) {
 		// kill proccess
 		if process, err := os.FindProcess(processInfo.Process); err != nil {
 			log.Error(`No running servers to close.`)
+		} else {
+			os.Remove(lockFile)
+			if err := process.Signal(syscall.SIGTERM); err != nil {
+				log.Fatal(err)
+			}
+			log.Success(`Closed the running server.`)
 		}
-		os.Remove(lockFile)
-		if err := process.Signal(syscall.SIGTERM); err != nil {
-			log.Fatal(err)
-		}
-		log.Success(`Closed the running server.`)
 	} else {
 		log.Error(`Error: Could not find any lock file.`)
 	}

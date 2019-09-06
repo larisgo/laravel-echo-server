@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"github.com/larisgo/laravel-echo-server/version"
 	"os"
+	"os/exec"
+	"path/filepath"
 )
 
 // const usage1 string = `Usage: laravel-echo-server [OPTIONS] <local port or address>
 // Options:
 // `
 
-const usage2 string = `Advanced usage: laravel-echo-server [OPTIONS] <command> [command args] [...]
+const usage2 string = `Advanced usage: %s [OPTIONS] <command> [command args] [...]
 Commands:
   start [-config=laravel-echo-server.json] [-dir] [-force] [-dev]
         Starts the server.
@@ -47,8 +49,16 @@ var (
 	ClientRemoveFlag = flag.NewFlagSet("client:remove", flag.ExitOnError)
 )
 
+func Filename() string {
+	file, err := exec.LookPath(os.Args[0])
+	if err != nil {
+		return "laravel-echo-server"
+	}
+	return filepath.Base(file)
+}
+
 func Usage() {
-	fmt.Fprintf(os.Stderr, usage2)
+	fmt.Fprintf(os.Stderr, fmt.Sprintf(usage2, Filename()))
 }
 
 func ParseArgs() (opts *Args, err error) {
