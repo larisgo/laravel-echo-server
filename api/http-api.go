@@ -143,6 +143,7 @@ func (this *HttpApi) GetChannels(w http.ResponseWriter, r *http.Request, router 
 	rooms := this.io.GetRoomSet()
 	channels := map[string]map[string]interface{}{}
 	for channelName, sockets := range rooms {
+		channelName = strings.TrimPrefix(channelName, fmt.Sprintf("%s:", this.io.Of("/").Name()))
 		if prefix != "" && strings.Index(channelName, prefix) != 0 {
 			break
 		}
@@ -182,11 +183,8 @@ func (this *HttpApi) uniq(members []*types.Member) []*types.Member {
  */
 func (this *HttpApi) GetChannel(w http.ResponseWriter, r *http.Request, router httprouter.Params) {
 	channelName := router.ByName("channelName")
-	room, has := this.io.GetRoomSet()[channelName]
-	subscriptionCount := 0
-	if has {
-		subscriptionCount = len(room)
-	}
+	sockets := this.io.Clients(channelName)
+	subscriptionCount := len(sockets)
 	result := map[string]interface{}{
 		"subscription_count": subscriptionCount,
 		"occupied":           subscriptionCount > 0,
@@ -216,7 +214,7 @@ func (this *HttpApi) GetChannel(w http.ResponseWriter, r *http.Request, router h
 func (this *HttpApi) GetChannelUsers(w http.ResponseWriter, r *http.Request, router httprouter.Params) {
 	channelName := router.ByName("channelName")
 
-	if this.channel.IsPresence(channelName) {
+	if !this.channel.IsPresence(channelName) {
 		this.badResponse(w, r, `User list is only possible for Presence Channels`)
 		return
 	}
