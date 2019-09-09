@@ -16,7 +16,7 @@ official docs: <https://laravel.com/docs/master/broadcasting>
 
 ## Getting Started
 
-Install npm package globally with the following command:
+Compile with the following command:
 
 ``` shell
 $   git clone https://github.com/larisgo/laravel-echo-server.git
@@ -275,12 +275,6 @@ With SQLite you may be interested in changing the path where the database is sto
     }
   }
 }
-```
-
-***Note: [node-sqlite3](https://github.com/mapbox/node-sqlite3) is required for this database. Please install before using.***
-
-```
-npm install sqlite3 -g
 ```
 
 ## Presence Channels
