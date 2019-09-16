@@ -16,7 +16,7 @@ official docs: <https://laravel.com/docs/master/broadcasting>
 
 ## Getting Started
 
-Install npm package globally with the following command:
+Compile with the following command:
 
 ``` shell
 $   git clone https://github.com/larisgo/laravel-echo-server.git
@@ -109,6 +109,7 @@ file, the following options can be overridden:
 - `databaseConfig.redis.host`: `LARAVEL_ECHO_SERVER_REDIS_HOST`
 - `databaseConfig.redis.port`: `LARAVEL_ECHO_SERVER_REDIS_PORT`
 - `databaseConfig.redis.password`: `LARAVEL_ECHO_SERVER_REDIS_PASSWORD`
+- `databaseConfig.prefix`: `LARAVEL_ECHO_SERVER_PREFIX` *Note*: LARAVEL_ECHO_SERVER_PREFIX="${REDIS_PREFIX}"
 
 
 ### Running with SSL
@@ -255,14 +256,13 @@ For example, if you wanted to pass a custom configuration to Redis:
     "redis" : {
       "port": "3001",
       "host": "redis.app.dev"
-    }
+    },
+    "prefix": ""
   }
 }
 
 ```
 *Note: No scheme (http/https etc) should be used for the host address*
-
-*A full list of Redis options can be found [here](https://github.com/luin/ioredis/blob/master/API.md#new-redisport-host-options).*
 
 ### SQLite
 With SQLite you may be interested in changing the path where the database is stored:
@@ -275,12 +275,6 @@ With SQLite you may be interested in changing the path where the database is sto
     }
   }
 }
-```
-
-***Note: [node-sqlite3](https://github.com/mapbox/node-sqlite3) is required for this database. Please install before using.***
-
-```
-npm install sqlite3 -g
 ```
 
 ## Presence Channels
@@ -320,7 +314,7 @@ See the official Laravel documentation for more information. <https://laravel.co
 You can include the socket.io client library from your running server. For example, if your server is running at `app.dev:6001` you should be able to
 add a script tag to your html like so:
 
-```
+```html
 <script src="//app.dev:6001/socket.io/socket.io.js"></script>
 ```
 
