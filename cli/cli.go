@@ -10,13 +10,14 @@ import (
 	"github.com/larisgo/laravel-echo-server/errors"
 	"github.com/larisgo/laravel-echo-server/log"
 	"github.com/larisgo/laravel-echo-server/options"
+	"github.com/larisgo/laravel-echo-server/std"
 	"github.com/larisgo/laravel-echo-server/types"
-	"github.com/tcnksm/go-input"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -143,143 +144,105 @@ func (this *Cli) resolveEnvFileOptions(config options.Config, args *Args) option
 func (this *Cli) setupConfig(defaultFile string) (options.Config, string) {
 	config := this.defaultOptions
 
-	ui := &input.UI{
-		Writer: os.Stdout,
-		Reader: os.Stdin,
-	}
-	if devMode, err := ui.Select("Do you want to run this server in development mode?", []string{"true", "false"}, &input.Options{
-		Default: "false",
-		Loop:    true,
-	}); err != nil {
-		log.Fatal(err)
+	input := std.NewDefaultInput(os.Stdin, std.NewDefaultOutput(os.Stdout))
+
+	if config.DevMode = input.Confirm("Do you want to run this server in development mode?", false); config.DevMode {
+		log.Success("Yes")
 	} else {
-		config.DevMode = map[string]bool{
-			"true":  true,
-			"false": false,
-		}[devMode]
-	}
-	if port, err := ui.Ask("Which port would you like to serve from?", &input.Options{
-		Default: "6001",
-		Loop:    true,
-	}); err != nil {
-		log.Fatal(err)
-	} else {
-		config.Port = port
+		log.Success("No")
 	}
 
-	if database, err := ui.Select("Which database would you like to use to store presence channel members?", []string{"redis", "sqlite"}, &input.Options{
-		Default: "sqlite",
-		Loop:    true,
-	}); err != nil {
-		log.Fatal(err)
-	} else {
-		config.Database = database
-	}
-
-	if authHost, err := ui.Ask("Enter the host of your Laravel authentication server.", &input.Options{
-		Default: "http://localhost",
-		Loop:    true,
-	}); err != nil {
-		log.Fatal(err)
-	} else {
-		config.AuthHost = authHost
-	}
-
-	protocol, err := ui.Select("Will you be serving on http or https?", []string{"http", "https"}, &input.Options{
-		Default: "http",
-		Loop:    true,
-	})
-	if err != nil {
-		log.Fatal(err)
-	} else {
-		config.Protocol = protocol
-	}
-
-	if protocol == "https" {
-		if sslCertPath, err := ui.Ask("Enter the path to your SSL cert file.", &input.Options{
-			Required: true,
-			Loop:     true,
-		}); err != nil {
-			log.Fatal(err)
+	config.Port = input.Ask("Which port would you like to serve from:", func(v string) error {
+		if (len(v) == 0) || regexp.MustCompile(`^([1-9]|[1-9]\d{1,3}|[1-6][0-5][0-5][0-3][0-5])$`).MatchString(v) {
+			return nil
 		} else {
-			config.SslCertPath = sslCertPath
+			return errors.NewError("Port numbers range from 1 to 65535")
 		}
+	}, "6001")
+	log.Success(config.Port)
 
-		if sslKeyPath, err := ui.Ask("Enter the path to your SSL key file.", &input.Options{
-			Required: true,
-			Loop:     true,
-		}); err != nil {
-			log.Fatal(err)
-		} else {
-			config.SslKeyPath = sslKeyPath
-		}
+	config.Database = input.Choose("Which database would you like to use to store presence channel members?", map[string]string{
+		"redis":  "Use redis to store.",
+		"sqlite": "Use sqlite to store.",
+	}, "sqlite")
+	log.Success(config.Database)
+
+	config.AuthHost = input.Ask("Enter the host of your Laravel authentication server:", func(_ string) error {
+		return nil
+	}, "http://localhost")
+	log.Success(config.AuthHost)
+
+	config.Protocol = input.Choose("Will you be serving on http or https?", map[string]string{
+		"http":  "Run the service using http.",
+		"https": "Run the service using https.",
+	}, "http")
+	log.Success(config.Protocol)
+
+	if config.Protocol == "https" {
+		config.SslCertPath = input.Ask("Enter the path to your SSL cert file:", func(v string) error {
+			if len(v) > 0 {
+				return nil
+			} else {
+				return errors.NewError("Please enter ssl Cert Path.")
+			}
+		})
+		log.Success(config.SslCertPath)
+
+		config.SslKeyPath = input.Ask("Enter the path to your SSL key file:", func(v string) error {
+			if len(v) > 0 {
+				return nil
+			} else {
+				return errors.NewError("Please enter ssl Key Path.")
+			}
+		})
+		log.Success(config.SslKeyPath)
 	}
 
-	if addClient, err := ui.Select("Do you want to generate a client ID/Key for HTTP API?", []string{"true", "false"}, &input.Options{
-		Default: "false",
-		Loop:    true,
-	}); err != nil {
-		log.Fatal(err)
-	} else {
-		if map[string]bool{"true": true, "false": false}[addClient] {
-			client := options.Client{
-				AppId: this.createAppId(),
-				Key:   this.createApiKey(),
-			}
-			if len(config.Clients) == 0 {
-				config.Clients = []options.Client{}
-			}
-			config.Clients = append(config.Clients, client)
-			// log.Info(fmt.Sprintf("appId: %s", client.AppId))
-			// log.Info(fmt.Sprintf("key: %s", client.Key))
+	if input.Confirm("Do you want to generate a client ID/Key for HTTP API?", false) {
+		log.Success("Yes")
+		client := options.Client{
+			AppId: this.createAppId(),
+			Key:   this.createApiKey(),
 		}
+		if len(config.Clients) == 0 {
+			config.Clients = []options.Client{}
+		}
+		config.Clients = append(config.Clients, client)
+
+		log.Info(fmt.Sprintf("appId: %s", client.AppId))
+		log.Info(fmt.Sprintf("key: %s", client.Key))
+	} else {
+		log.Success("No")
 	}
 
-	if corsAllow, err := ui.Select("Do you want to setup cross domain access to the API?", []string{"true", "false"}, &input.Options{
-		Default: "false",
-		Loop:    true,
-	}); err != nil {
-		log.Fatal(err)
+	if config.ApiOriginAllow.AllowCors = input.Confirm("Do you want to setup cross domain access to the API?", false); config.ApiOriginAllow.AllowCors {
+		log.Success("Yes")
 	} else {
-		config.ApiOriginAllow.AllowCors = map[string]bool{
-			"true":  true,
-			"false": false,
-		}[corsAllow]
+		log.Success("No")
 	}
 
 	if config.ApiOriginAllow.AllowCors {
-		if allowOrigin, err := ui.Ask("Specify the URI that may access the API:", &input.Options{
-			Default: "http://localhost:80",
-			Loop:    true,
-		}); err != nil {
-			log.Fatal(err)
-		} else {
-			config.ApiOriginAllow.AllowOrigin = allowOrigin
-		}
-		if allowMethods, err := ui.Ask("Enter the HTTP methods that are allowed for CORS:", &input.Options{
-			Default: "GET, POST",
-			Loop:    true,
-		}); err != nil {
-			log.Fatal(err)
-		} else {
-			config.ApiOriginAllow.AllowMethods = allowMethods
-		}
-		if allowHeaders, err := ui.Ask("Enter the HTTP headers that are allowed for CORS:", &input.Options{
-			Default: "Origin, Content-Type, X-Auth-Token, X-Requested-With, Accept, Authorization, X-CSRF-TOKEN, X-Socket-Id",
-			Loop:    true,
-		}); err != nil {
-			log.Fatal(err)
-		} else {
-			config.ApiOriginAllow.AllowHeaders = allowHeaders
-		}
+		config.ApiOriginAllow.AllowOrigin = input.Ask("Specify the URI that may access the API:", func(_ string) error {
+			return nil
+		}, "http://localhost:80")
+		log.Success(config.ApiOriginAllow.AllowOrigin)
+
+		config.ApiOriginAllow.AllowMethods = input.Ask("Enter the HTTP methods that are allowed for CORS:", func(_ string) error {
+			return nil
+		}, "GET, POST")
+		log.Success(config.ApiOriginAllow.AllowMethods)
+
+		config.ApiOriginAllow.AllowHeaders = input.Ask("Enter the HTTP headers that are allowed for CORS:", func(_ string) error {
+			return nil
+		}, "Origin, Content-Type, X-Auth-Token, X-Requested-With, Accept, Authorization, X-CSRF-TOKEN, X-Socket-Id")
+		log.Success(config.ApiOriginAllow.AllowHeaders)
 	}
-	file, err := ui.Ask("What do you want this config to be saved as?", &input.Options{
-		Default: defaultFile,
-		Loop:    true,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+
+	file := input.Ask("What do you want this config to be saved as:", func(_ string) error {
+		return nil
+	}, defaultFile)
+	log.Success(file)
+
 	return config, file
 }
 
