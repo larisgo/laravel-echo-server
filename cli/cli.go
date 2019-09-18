@@ -50,6 +50,12 @@ func NewCli() *Cli {
  * Create a configuration file.
  */
 func (this *Cli) Configure(args *Args) {
+	if len(args.Dir) > 0 {
+		if err := os.Chdir(args.Dir); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	config, file := this.setupConfig(args.Config)
 	if err := this.saveConfig(config, file); err != nil {
 		log.Fatal(err)
@@ -97,8 +103,8 @@ func (this *Cli) EnvToBool(v string) bool {
 /**
  * Inject the .env vars into options if they exist.
  */
-func (this *Cli) resolveEnvFileOptions(config options.Config, args *Args) options.Config {
-	if err := godotenv.Load(this.getConfigFile(".env", args.Dir)); err != nil {
+func (this *Cli) resolveEnvFileOptions(config options.Config) options.Config {
+	if err := godotenv.Load(); err != nil {
 		// log.Fatal("Error loading .env file")
 		return config
 	}
@@ -298,11 +304,17 @@ func (this *Cli) Exit(lockFile string) {
  * Start the Laravel Echo server.
  */
 func (this *Cli) Start(args *Args) {
+	if len(args.Dir) > 0 {
+		if err := os.Chdir(args.Dir); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	configFile := this.getConfigFile(args.Config, args.Dir)
 	if !this.FileExists(configFile) {
 		log.Fatal(fmt.Sprintf(`Error: The config file [%s] cound not be found.`, args.Config))
 	}
-	config := this.readConfigFile(configFile, args)
+	config := this.readConfigFile(configFile)
 	if args.Dev {
 		config.DevMode = true
 	}
@@ -361,6 +373,12 @@ func (this *Cli) Start(args *Args) {
  * Stop the Laravel Echo server.
  */
 func (this *Cli) Stop(args *Args) {
+	if len(args.Dir) > 0 {
+		if err := os.Chdir(args.Dir); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	configFile := this.getConfigFile(args.Config, args.Dir)
 	lockFile := filepath.Clean(path.Join(filepath.Dir(configFile), fmt.Sprintf("%s%s", strings.TrimSuffix(args.Config, ".json"), ".lock")))
 
@@ -421,11 +439,17 @@ func (this *Cli) createAppId() string {
  * Add a registered referrer.
  */
 func (this *Cli) ClientAdd(args *Args) {
+	if len(args.Dir) > 0 {
+		if err := os.Chdir(args.Dir); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	configFile := this.getConfigFile(args.Config, args.Dir)
 	if !this.FileExists(configFile) {
 		log.Fatal(fmt.Sprintf(`Error: The config file [%s] cound not be found.`, args.Config))
 	}
-	config := this.readConfigFile(configFile, args)
+	config := this.readConfigFile(configFile)
 	appId := ""
 	if len(args.Args) > 0 {
 		appId = args.Args[0]
@@ -471,11 +495,17 @@ func (this *Cli) ClientAdd(args *Args) {
  * Remove a registered referrer.
  */
 func (this *Cli) ClientRemove(args *Args) {
+	if len(args.Dir) > 0 {
+		if err := os.Chdir(args.Dir); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	configFile := this.getConfigFile(args.Config, args.Dir)
 	if !this.FileExists(configFile) {
 		log.Fatal(fmt.Sprintf(`Error: The config file [%s] cound not be found.`, args.Config))
 	}
-	config := this.readConfigFile(configFile, args)
+	config := this.readConfigFile(configFile)
 	appId := ""
 	if len(args.Args) > 0 {
 		appId = args.Args[0]
@@ -530,7 +560,7 @@ func (this *Cli) getConfigFile(file string, dir string) string {
 /**
  * Tries to read a config file
  */
-func (this *Cli) readConfigFile(file string, args *Args) options.Config {
+func (this *Cli) readConfigFile(file string) options.Config {
 	var data options.Config
 
 	bytes_data, err := ioutil.ReadFile(file)
@@ -541,5 +571,5 @@ func (this *Cli) readConfigFile(file string, args *Args) options.Config {
 		log.Fatal(err)
 	}
 
-	return this.resolveEnvFileOptions(data, args)
+	return this.resolveEnvFileOptions(data)
 }
