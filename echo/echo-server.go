@@ -8,7 +8,7 @@ import (
 	"github.com/larisgo/laravel-echo-server/server"
 	"github.com/larisgo/laravel-echo-server/subscribers"
 	"github.com/larisgo/laravel-echo-server/types"
-	"github.com/larisgo/laravel-echo-server/version"
+	"github.com/larisgo/laravel-echo-server/utils"
 	"github.com/pschlump/socketio"
 )
 
@@ -128,12 +128,11 @@ func (this *EchoServer) Init(io *socketio.Server) {
  * Text shown at Startup.
  */
 func (this *EchoServer) Startup() {
-	log.Line(`
-                         __             __
+	log.Line(`                         __             __
 |   _  __ _     _  |    |_  _ |_  _    (_  _  __    _  __
 |__(_| | (_|\_/(/_ |    |__(_ | |(_)   __)(/_ | \_/(/_ |
 	`)
-	log.Line(version.VERSION)
+	log.Line(utils.VERSION)
 
 	if this.options.DevMode {
 		log.Warning("Starting server in DEV mode...")

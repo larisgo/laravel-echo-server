@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/larisgo/laravel-echo-server/log"
 	"github.com/larisgo/laravel-echo-server/options"
+	"github.com/larisgo/laravel-echo-server/utils"
 	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"path"
@@ -27,7 +28,13 @@ func NewSQLiteDatabase(Options options.Config) DatabaseDriver {
 	if err != nil {
 		log.Fatal(err)
 	}
-	this.sqlite, err = sql.Open("sqlite3", filepath.Clean(path.Join(cwd, Options.DatabaseConfig.Sqlite.DatabasePath)))
+	sqlite_db := filepath.Clean(path.Join(cwd, Options.DatabaseConfig.Sqlite.DatabasePath))
+	if path := filepath.Dir(sqlite_db); !utils.Exists(path) {
+		if err := os.MkdirAll(path, 0755); err != nil {
+			log.Fatal(err)
+		}
+	}
+	this.sqlite, err = sql.Open("sqlite3", sqlite_db)
 	if err != nil {
 		log.Fatal(err)
 	}

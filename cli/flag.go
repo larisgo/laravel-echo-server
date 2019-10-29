@@ -3,7 +3,7 @@ package cli
 import (
 	"flag"
 	"fmt"
-	"github.com/larisgo/laravel-echo-server/version"
+	"github.com/larisgo/laravel-echo-server/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -140,7 +140,7 @@ func ParseArgs() (opts *Args, err error) {
 		opts.Command = "client:remove"
 		opts.Args = ClientRemoveFlag.Args()
 	case "version":
-		fmt.Println(version.VERSION)
+		fmt.Println(utils.VERSION)
 		os.Exit(0)
 	case "h", "help":
 		flag.Usage()
