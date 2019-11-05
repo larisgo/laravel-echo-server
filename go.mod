@@ -2,7 +2,7 @@ module github.com/larisgo/laravel-echo-server
 
 go 1.13
 
-replace github.com/pschlump/socketio => github.com/zishang520/socketio v2.0.7+incompatible
+replace github.com/pschlump/socketio => github.com/zishang520/socketio v2.0.8+incompatible
 
 require (
 	github.com/go-redis/redis v6.15.6+incompatible
