@@ -1,6 +1,6 @@
 # Laravel Echo Server
 
-[![GoDoc](https://godoc.org/github.com/larisgo/laravel-echo-server?status.svg)](https://godoc.org/github.com/larisgo/laravel-echo-server)
+[![GoDoc](https://pkg.go.dev/badge/github.com/larisgo/laravel-echo-server?utm_source=godoc)](https://pkg.go.dev/github.com/larisgo/laravel-echo-server)
 
 Golang server for Laravel Echo broadcasting with Socket.io.
 
