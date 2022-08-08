@@ -95,7 +95,7 @@ Edit the default configuration of the server by adding options to your **laravel
 | `sslKeyPath`       | `''`                 | The path to your server's ssl key |
 | `sslCertChainPath` | `''`                 | The path to your server's ssl certificate chain |
 | `sslPassphrase`    | `''`                 | The pass phrase to use for the certificate (if applicable) |
-| `socketio`         | `{}`                 | Options to pass to the socket.io instance ([available options](https://github.com/socketio/engine.io#methods-1)) |
+| `socketio`         | `{}`                 | Options to pass to the socket.io instance ([available options](https://github.com/larisgo/laravel-echo-server/blob/master/options/server-options.go)) |
 | `subscribers`      | `{"http": true, "redis": true}` | Allows to disable subscribers individually. Available subscribers: `http` and `redis` |
 
 ### DotEnv
@@ -329,11 +329,11 @@ _Note: When using the socket.io client library from your running server, remembe
 
 Code reference [@tlaverdure](https://github.com/tlaverdure/laravel-echo-server), And the following open source components：
 
+- [@andybalholm](https://github.com/andybalholm/brotli)
 - [@go-redis](https://github.com/go-redis/redis)
 - [@gookit](https://github.com/gookit/color)
-- [@gorilla](https://github.com/gorilla/websocket)
 - [@joho](https://github.com/joho/godotenv)
 - [@julienschmidt](https://github.com/julienschmidt/httprouter)
 - [@mattn](https://github.com/mattn/go-sqlite3)
-- [@pschlump](https://github.com/pschlump/socketio)
-- [@tcnksm](https://github.com/tcnksm/go-input)
+- [@mitchellh](https://github.com/mitchellh/mapstructure)
+- [@zishang520](https://github.com/zishang520/socket.io)
