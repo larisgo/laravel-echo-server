@@ -2,13 +2,13 @@
 
 [![GoDoc](https://pkg.go.dev/badge/github.com/larisgo/laravel-echo-server?utm_source=godoc)](https://pkg.go.dev/github.com/larisgo/laravel-echo-server)
 
-Golang server for Laravel Echo broadcasting with Socket.io.
+Golang server for Laravel Echo broadcasting with [Socket.io for golang](https://github.com/zishang520/socket.io).
 
 ## System Requirements
 
 The following are required to function properly.
 
-*   Laravel 5.3
+*   Laravel 5.3+
 *   Redis 3+
 
 Additional information on broadcasting with Laravel can be found on the
@@ -108,8 +108,12 @@ file, the following options can be overridden:
 - `devMode`: `LARAVEL_ECHO_SERVER_DEBUG`
 - `databaseConfig.redis.host`: `LARAVEL_ECHO_SERVER_REDIS_HOST`
 - `databaseConfig.redis.port`: `LARAVEL_ECHO_SERVER_REDIS_PORT`
+- `databaseConfig.redis.username`: `LARAVEL_ECHO_SERVER_REDIS_USERNAME`
 - `databaseConfig.redis.password`: `LARAVEL_ECHO_SERVER_REDIS_PASSWORD`
-- `databaseConfig.prefix`: `LARAVEL_ECHO_SERVER_PREFIX` *Note*: LARAVEL_ECHO_SERVER_PREFIX="${REDIS_PREFIX}"
+- `databaseConfig.redis.keyPrefix`: `LARAVEL_ECHO_SERVER_REDIS_KEYPREFIX` *Note*: LARAVEL_ECHO_SERVER_REDIS_KEYPREFIX="${REDIS_PREFIX}"
+- `protocol`: `LARAVEL_ECHO_SERVER_PROTO`
+- `sslCertPath`: `LARAVEL_ECHO_SERVER_SSL_CERT`
+- `sslKeyPath`: `LARAVEL_ECHO_SERVER_SSL_KEY`
 
 
 ### Running with SSL
