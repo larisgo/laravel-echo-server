@@ -145,7 +145,7 @@ func (api *HttpApi) GetChannels(w http.ResponseWriter, r *http.Request, _ httpro
 func (api *HttpApi) GetChannel(w http.ResponseWriter, r *http.Request, router httprouter.Params) {
 	channelName := router.ByName("channelName")
 	subscriptionCount := 0
-	if sockets, ok := api.io.Sockets().Adapter().Rooms().Load(channelName); ok {
+	if sockets, ok := api.io.Sockets().Adapter().Rooms().Load(socket.Room(channelName)); ok {
 		subscriptionCount = sockets.(*types.Set[socket.SocketId]).Len()
 	}
 	result := map[string]interface{}{

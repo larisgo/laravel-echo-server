@@ -174,7 +174,7 @@ func (ec *EchoServer) Listen() {
 
 // Return a channel by its socket id.
 func (ec *EchoServer) Find(id string) *socket.Socket {
-	if _socket, ok := ec.server.Io.Sockets().Sockets().Load(id); ok {
+	if _socket, ok := ec.server.Io.Sockets().Sockets().Load(socket.SocketId(id)); ok {
 		return _socket.(*socket.Socket)
 	}
 	return nil
