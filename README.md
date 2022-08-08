@@ -324,11 +324,6 @@ add a script tag to your html like so:
 
 _Note: When using the socket.io client library from your running server, remember to check that the `io` global variable is defined before subscribing to events._
 
-#### µWebSockets deprecation
-
-µWebSockets has been [officially deprecated](https://www.npmjs.com/package/uws). Currently there is no support for µWebSockets in Socket.IO, but it may have the new [ClusterWS](https://www.npmjs.com/package/@clusterws/cws) support incoming. Meanwhile Laravel Echo Server will use [`ws` engine](https://www.npmjs.com/package/ws) by default until there is another option.
-
-
 ###### Acknowledgement
 
 Code reference [@tlaverdure](https://github.com/tlaverdure/laravel-echo-server), And the following open source components：
