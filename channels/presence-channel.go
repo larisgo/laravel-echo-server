@@ -114,7 +114,7 @@ func (pch *PresenceChannel) Join(socket *socket.Socket, channel string, member *
 	member.SocketId = socket.Id()
 	members = append(members, member)
 
-	pch.db.Set(channel+"%s:members", members)
+	pch.db.Set(channel+":members", members)
 
 	pch.OnSubscribed(socket, channel, members.Unique(true))
 

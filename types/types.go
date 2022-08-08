@@ -27,7 +27,7 @@ type Members []*Member
 func (members Members) Unique(reverse bool) (result Members) {
 	tempMap := map[uint64]struct{}{}
 	if reverse {
-		for i := len(members) - 1; i > 0; i = i - 1 {
+		for i := len(members) - 1; i >= 0; i = i - 1 {
 			if _, ok := tempMap[members[i].UserId]; !ok {
 				tempMap[members[i].UserId] = struct{}{}
 				result = append(result, members[i])
