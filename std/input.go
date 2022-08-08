@@ -67,11 +67,11 @@ func (i *DefaultInput) Ask(question string, check func(string) error, _default .
 		}
 	}
 	reader := bufio.NewReader(i.in)
+	_d := ""
+	if len(_default[0]) > 0 {
+		_d = color.Primary.Sprint(fmt.Sprintf(" (%s) ", _default[0]))
+	}
 	for {
-		_d := ""
-		if len(_default[0]) > 0 {
-			_d = color.Primary.Sprint(fmt.Sprintf(" (%s) ", _default[0]))
-		}
 		i.out.Printf(RenderAskQuestion(question) + _d)
 		line, _, err := reader.ReadLine()
 		for err == io.EOF {
