@@ -1,3 +1,4 @@
+// Source: https://github.com/ukautz/clif/blob/v1/output.go
 package std
 
 import (
@@ -35,14 +36,14 @@ func NewDefaultOutput(io io.Writer) *DefaultOutput {
 	}
 }
 
-func (this *DefaultOutput) Printf(msg string, args ...interface{}) {
-	this.io.Write([]byte(this.Sprintf(msg, args...)))
+func (o *DefaultOutput) Printf(msg string, args ...interface{}) {
+	o.io.Write([]byte(o.Sprintf(msg, args...)))
 }
 
-func (this *DefaultOutput) Sprintf(msg string, args ...interface{}) string {
+func (o *DefaultOutput) Sprintf(msg string, args ...interface{}) string {
 	return fmt.Sprintf(msg, args...)
 }
 
-func (this *DefaultOutput) Writer() io.Writer {
-	return this.io
+func (o *DefaultOutput) Writer() io.Writer {
+	return o.io
 }

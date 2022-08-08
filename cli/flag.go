@@ -88,7 +88,7 @@ func ParseArgs() (opts *Args, err error) {
 		ClientRemoveFlagdir    = ClientRemoveFlag.String("dir", "", "The working directory to use.")
 	)
 
-	switch flag.Arg(0) {
+	switch tag := flag.Arg(0); tag {
 	case "start":
 		StartFlag.Parse(flag.Args()[1:])
 		opts = &Args{
@@ -142,22 +142,11 @@ func ParseArgs() (opts *Args, err error) {
 	case "version":
 		fmt.Println(utils.VERSION)
 		os.Exit(0)
-	case "h", "help":
+	case "", "h", "help":
 		flag.Usage()
 		os.Exit(0)
-	case "":
-		err = fmt.Errorf("Please provide a valid command.")
-		return
 	default:
-		if len(flag.Args()) > 1 {
-			err = fmt.Errorf("Please provide a valid command, got %d: %v",
-				len(flag.Args()),
-				flag.Args())
-			return
-		}
-		opts = &Args{}
-		opts.Command = "default"
-		opts.Args = flag.Args()
+		err = fmt.Errorf("Command '" + tag + "' is undefined. Please enter 'h' or 'help' to see the available commands.")
 	}
 	return
 }

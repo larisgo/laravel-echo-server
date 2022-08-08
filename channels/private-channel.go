@@ -3,80 +3,68 @@ package channels
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/larisgo/laravel-echo-server/errors"
-	"github.com/larisgo/laravel-echo-server/http"
-	"github.com/larisgo/laravel-echo-server/log"
+	_http "github.com/larisgo/laravel-echo-server/http"
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/larisgo/laravel-echo-server/types"
-	"github.com/pschlump/socketio"
+	"github.com/zishang520/engine.io/utils"
+	"github.com/zishang520/socket.io/socket"
+	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
-	"sync"
 )
 
 type PrivateChannel struct {
-	/**
-	 * Request client.
-	 */
-	client *http.Client
 
-	/**
-	 * Configurable server options.
-	 */
-	options options.Config
+	// Request client.
+	client *_http.Client
 
-	// mu
-	mu sync.RWMutex
+	// Configurable server options.
+	options *options.Config
 }
 
-/**
- * Create a new private channel instance.
- */
-func NewPrivateChannel(Options options.Config) *PrivateChannel {
-	this := &PrivateChannel{}
-	this.options = Options
-	this.client = http.NewClient()
-	return this
+// Create a new private channel instance.
+func NewPrivateChannel(_options *options.Config) *PrivateChannel {
+	pch := &PrivateChannel{}
+	pch.options = _options
+	pch.client = _http.NewClient()
+	return pch
 }
 
-/**
- * Send authentication request to application server.
- */
-func (this *PrivateChannel) Authenticate(socket socketio.Socket, data types.Data) (interface{}, int, error) {
+// Send authentication request to application server.
+func (pch *PrivateChannel) Authenticate(_socket *socket.Socket, data *types.Data) (interface{}, int, error) {
 	body, err := json.Marshal(map[string]string{
 		"channel_name": data.Channel,
 	})
 	if err != nil {
-		return nil, 500, err
+		return nil, http.StatusInternalServerError, err
 	}
-	options := &http.Options{
-		Method: "POST",
+	options := &_http.Options{
+		Method: http.MethodPost,
 		Headers: (func() map[string]string {
 			data.Auth.Headers["Content-Type"] = "application/json; charset=UTF-8"
 			return data.Auth.Headers
 		})(),
-		Url:  fmt.Sprintf("%s%s", this.authHost(socket), this.options.AuthEndpoint),
+		Url:  pch.authHost(_socket) + pch.options.AuthEndpoint,
 		Body: bytes.NewReader(body),
 	}
 
-	if this.options.DevMode {
-		log.Warning(fmt.Sprintf(`Sending auth request to: %s`, options.Url))
+	if pch.options.DevMode {
+		utils.Log().Warning(`Sending auth request to: %s`, options.Url)
 	}
 
-	return this.serverRequest(socket, options, data.Channel)
+	return pch.serverRequest(_socket, options, data.Channel)
 }
 
-/**
- * Get the auth host based on the Socket.
- */
-func (this *PrivateChannel) authHost(socket socketio.Socket) string {
-	this.mu.RLock()
-	defer this.mu.RUnlock()
-
+// Get the auth host based on the Socket.
+func (pch *PrivateChannel) authHost(_socket *socket.Socket) string {
+	_authHosts := pch.options.AuthHost
+	if _authHosts == nil {
+		_authHosts = pch.options.Host
+	}
 	authHosts := options.Hosts{}
-	switch hosts := this.options.AuthHost.(type) {
+	switch hosts := _authHosts.(type) {
 	case string:
 		authHosts = options.Hosts{hosts}
 	case options.Hosts:
@@ -88,68 +76,60 @@ func (this *PrivateChannel) authHost(socket socketio.Socket) string {
 		authHostSelected = authHosts[0]
 	}
 
-	if _, ok := socket.Request().Header["Referer"]; ok {
-		if r := socket.Request().Header.Get("Referer"); r != "" {
-			if referer, err := url.Parse(r); err != nil {
-				for _, authHost := range authHosts {
-					authHostSelected = authHost
-					if this.hasMatchingHost(referer, authHost) {
-						authHostSelected = fmt.Sprintf(`%s//%s`, referer.Scheme, referer.Host)
-						break
-					}
+	if r := _socket.Request().Headers().Get("Referer"); r != "" {
+		if referer, err := url.Parse(r); err != nil {
+			for _, authHost := range authHosts {
+				authHostSelected = authHost
+				if pch.hasMatchingHost(referer, authHost) {
+					authHostSelected = referer.Scheme + "//" + referer.Host
+					break
 				}
 			}
 		}
 	}
 
-	if !regexp.MustCompile(`^http(s)?://`).MatchString(authHostSelected) {
-		authHostSelected = fmt.Sprintf(`%s://%s`, this.options.AuthProtocol, authHostSelected)
-	}
-
-	if this.options.DevMode {
-		log.Warning(fmt.Sprintf(`Preparing authentication request to: %s`, authHostSelected))
+	if pch.options.DevMode {
+		utils.Log().Warning(`Preparing authentication request to: %s`, authHostSelected)
 	}
 
 	return authHostSelected
 }
 
-/**
- * Check if there is a matching auth host.
- */
-func (this *PrivateChannel) hasMatchingHost(referer *url.URL, host string) bool {
+// Check if there is a matching auth host.
+func (pch *PrivateChannel) hasMatchingHost(referer *url.URL, host string) bool {
 	hostname := referer.Hostname()
-	return hostname[strings.Index(hostname, `.`):] == host || fmt.Sprintf(`%s//%s`, referer.Scheme, referer.Host) == host || referer.Host == host
+	return (hostname != "" && hostname[strings.Index(hostname, `.`):] == host) || (referer.Scheme+"//"+referer.Host) == host || referer.Host == host
 }
 
-/**
- * Send a request to the server.
- */
-func (this *PrivateChannel) serverRequest(socket socketio.Socket, options *http.Options, channel_name string) (interface{}, int, error) {
-	options.Headers = this.prepareHeaders(socket, options)
-	response, err := this.client.Request(options)
+// Send a request to the server.
+func (pch *PrivateChannel) serverRequest(_socket *socket.Socket, options *_http.Options, channel_name string) (interface{}, int, error) {
+	options.Headers = pch.prepareHeaders(_socket, options)
+	response, err := pch.client.Request(options)
 	if err != nil {
-		if this.options.DevMode {
-			log.Error(fmt.Sprintf(`Error authenticating %s for %s`, socket.Id(), channel_name))
-			log.Error(err)
+		if pch.options.DevMode {
+			utils.Log().Error(`Error authenticating %s for %s`, _socket.Id(), channel_name)
+			utils.Log().Error("%v", err)
 		}
-		return nil, 502, err
+		return nil, http.StatusBadGateway, errors.New("Error sending authentication request.")
 	}
-	if response.StatusCode != 200 {
-		if this.options.DevMode {
-			log.Warning(fmt.Sprintf(`%s could not be authenticated to %s`, socket.Id(), channel_name))
-			log.Error(string(response.BodyBytes))
+	if response.StatusCode != http.StatusOK {
+		if pch.options.DevMode {
+			utils.Log().Warning(`%s could not be authenticated to %s`, _socket.Id(), channel_name)
+			utils.Log().Error("%s", response.BodyBuffer.String())
 		}
-		return nil, response.StatusCode, errors.NewError(fmt.Sprintf(`Client can not be authenticated, got HTTP status %d`, response.StatusCode))
+		return nil, response.StatusCode, errors.New(fmt.Sprintf(`Client can not be authenticated, got HTTP status %d`, response.StatusCode))
 	}
-	if this.options.DevMode {
-		log.Info(fmt.Sprintf(`%s authenticated for: %s`, socket.Id(), channel_name))
+	if pch.options.DevMode {
+		utils.Log().Info(`%s authenticated for: %s`, _socket.Id(), channel_name)
 	}
-
-	var res_channel_data types.AuthenticateData
-	if err := json.Unmarshal(response.BodyBytes, &res_channel_data); err != nil {
+	if response.BodyBuffer == nil {
+		return nil, http.StatusBadGateway, errors.New("Error sending authentication request.")
+	}
+	var res_channel_data *types.AuthenticateData = nil
+	if err := json.Unmarshal(response.BodyBuffer.Bytes(), &res_channel_data); err != nil {
 		var res_bool bool
-		if err := json.Unmarshal(response.BodyBytes, &res_bool); err != nil {
-			return nil, 500, err
+		if err := json.Unmarshal(response.BodyBuffer.Bytes(), &res_bool); err != nil {
+			return nil, http.StatusInternalServerError, err
 		}
 		return res_bool, response.StatusCode, nil
 	}
@@ -157,15 +137,11 @@ func (this *PrivateChannel) serverRequest(socket socketio.Socket, options *http.
 	return res_channel_data, response.StatusCode, nil
 }
 
-/**
- * Prepare headers for request to app server.
- */
-func (this *PrivateChannel) prepareHeaders(socket socketio.Socket, options *http.Options) map[string]string {
-	if cookie, HasCookie := options.Headers[`Cookie`]; !HasCookie && cookie != "" {
-		if _, ok := socket.Request().Header["Cookie"]; ok {
-			if c := socket.Request().Header.Get("Cookie"); c != "" {
-				options.Headers[`Cookie`] = c
-			}
+// Prepare headers for request to app server.
+func (pch *PrivateChannel) prepareHeaders(_socket *socket.Socket, options *_http.Options) map[string]string {
+	if cookie, HasCookie := options.Headers[`Cookie`]; !HasCookie || cookie == "" {
+		if c := _socket.Request().Headers().Get("Cookie"); c != "" {
+			options.Headers[`Cookie`] = c
 		}
 	}
 	options.Headers[`X-Requested-With`] = `XMLHttpRequest`

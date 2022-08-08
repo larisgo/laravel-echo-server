@@ -1,49 +1,52 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/go-redis/redis"
-	"github.com/larisgo/laravel-echo-server/log"
+	"github.com/go-redis/redis/v8"
 	"github.com/larisgo/laravel-echo-server/options"
 	"regexp"
 )
 
 type RedisDatabase struct {
-	/**
-	 * Redis client.
-	 */
+
+	// Redis client.
 	redis *redis.Client
 
-	/**
-	 * Configurable server options.
-	 */
-	options options.Config
+	// Configurable server options.
+	options *options.Config
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-/**
- * Create a new cache instance.
- */
-func NewRedisDatabase(Options options.Config) DatabaseDriver {
-	this := &RedisDatabase{}
-	this.redis = redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf(`%s:%s`, Options.DatabaseConfig.Redis.Host, Options.DatabaseConfig.Redis.Port),
-		Password: Options.DatabaseConfig.Redis.Password,
-		DB:       Options.DatabaseConfig.Redis.Db,
+// Create a new cache instance.
+func NewRedisDatabase(_options *options.Config) (DatabaseDriver, error) {
+	db := &RedisDatabase{}
+	db.ctx, db.cancel = context.WithCancel(context.Background())
+	db.redis = redis.NewClient(&redis.Options{
+		Addr:     _options.DatabaseConfig.Redis.Host + ":" + _options.DatabaseConfig.Redis.Port,
+		Username: _options.DatabaseConfig.Redis.Username,
+		Password: _options.DatabaseConfig.Redis.Password,
+		DB:       _options.DatabaseConfig.Redis.Db,
 	})
-	// defer this.redis.Close()
-	if _, err := this.redis.Ping().Result(); err != nil {
-		log.Fatal(err)
+
+	if _, err := db.redis.Ping(db.ctx).Result(); err != nil {
+		return nil, errors.New(fmt.Sprintf("Redis connection failed: %v", err))
 	}
-	this.options = Options
-	return DatabaseDriver(this)
+	db.options = _options
+	return db, nil
 }
 
-/**
- * Retrieve data from redis.
- */
-func (this *RedisDatabase) Get(key string) ([]byte, error) {
-	data, err := this.redis.Get(key).Bytes()
+func (db *RedisDatabase) Close() error {
+	return db.redis.Close()
+}
+
+// Retrieve data from redis.
+func (db *RedisDatabase) Get(key string) ([]byte, error) {
+	data, err := db.redis.Get(db.ctx, key).Bytes()
 	if err != nil {
 		if err == redis.Nil {
 			return nil, nil
@@ -53,18 +56,16 @@ func (this *RedisDatabase) Get(key string) ([]byte, error) {
 	return data, nil
 }
 
-/**
- * Store data to cache.
- */
-func (this *RedisDatabase) Set(key string, value interface{}) error {
+// Store data to cache.
+func (db *RedisDatabase) Set(key string, value interface{}) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return err
 	}
-	if err := this.redis.Set(key, data, 0).Err(); err != nil {
+	if err := db.redis.Set(db.ctx, key, data, 0).Err(); err != nil {
 		return err
 	}
-	if this.options.DatabaseConfig.PublishPresence == true && regexp.MustCompile(`^presence-.*:members`).MatchString(key) {
+	if db.options.DatabaseConfig.PublishPresence == true && regexp.MustCompile(`^presence-.*:members$`).MatchString(key) {
 		result, err := json.Marshal(map[string]map[string]interface{}{
 			"event": map[string]interface{}{
 				"channel": key,
@@ -74,7 +75,7 @@ func (this *RedisDatabase) Set(key string, value interface{}) error {
 		if err != nil {
 			return err
 		}
-		this.redis.Publish(`PresenceChannelUpdated`, result)
+		return db.redis.Publish(db.ctx, `PresenceChannelUpdated`, result).Err()
 	}
 	return nil
 }

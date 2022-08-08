@@ -2,15 +2,15 @@ package main
 
 import (
 	"github.com/larisgo/laravel-echo-server/cli"
+	"github.com/zishang520/engine.io/utils"
 	"os"
 )
 
 func main() {
 	args, err := cli.ParseArgs()
 	if err != nil {
-		// log.Error(err)
-		cli.Usage()
-		os.Exit(0)
+		utils.Log().Fatal("%v", err)
+		// os.Exit(0)
 	}
 	cmd := cli.NewCli()
 	switch args.Command {
@@ -24,8 +24,6 @@ func main() {
 		cmd.ClientAdd(args)
 	case "client:remove":
 		cmd.ClientRemove(args)
-	case "default":
-		fallthrough
 	default:
 		cli.Usage()
 		os.Exit(0)

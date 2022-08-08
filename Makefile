@@ -1,33 +1,37 @@
-.PHONY: default install all run
+.PHONY: default static-server deps fmt server static-release-all release-all all static-all run
 export GOPATH:=$(shell pwd)/vendor
-export GOPROXY=https://goproxy.io
+# Set the GOPROXY environment variable
+export GOPROXY=https://goproxy.io,direct
+# export http_proxy=socks5://127.0.0.1:1080
+# export https_proxy=%http_proxy%
 
+BUILDTAGS=release
+default: all
 
-default:
-	go build -ldflags "-s -w" -o bin/laravel-echo-server main.go
+deps:
+	go mod tidy -v
+	go mod vendor -v
 
-install:
-	go mod tidy
+fmt:
+	go fmt -mod=mod github.com/larisgo/laravel-echo-server/...
 
-all:
-	@echo "build darwin_386/laravel-echo-server"
-	GOOS=darwin GOARCH=386 go build -ldflags "-s -w" -o "bin/darwin_386/laravel-echo-server" main.go
-	@echo "build darwin_amd64/laravel-echo-server"
-	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o "bin/darwin_amd64/laravel-echo-server" main.go
-	@echo "build linux_386/laravel-echo-server"
-	GOOS=linux GOARCH=386 go build -ldflags "-s -w" -o "bin/linux_386/laravel-echo-server" main.go
-	@echo "build linux_amd64/laravel-echo-server"
-	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o "bin/linux_amd64/laravel-echo-server" main.go
-	@echo "build linux_arm/laravel-echo-server"
-	GOOS=linux GOARCH=arm go build -ldflags "-s -w" -o "bin/linux_arm/laravel-echo-server" main.go
-	@echo "build linux_arm64/laravel-echo-server"
-	GOOS=linux GOARCH=arm64 go build -ldflags "-s -w" -o "bin/linux_arm64/laravel-echo-server" main.go
-	@echo "build windows_386/laravel-echo-server.exe"
-	GOOS=windows GOARCH=386 go build -ldflags "-s -w" -o "bin/windows_386/laravel-echo-server.exe" main.go
-	@echo "build windows_amd64/laravel-echo-server.exe"
-	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o "bin/windows_amd64/laravel-echo-server.exe" main.go
+static-server:
+	CGO_ENABLED=0 go install --tags '$(BUILDTAGS)' -ldflags '-s -w -extldflags "-static"' -mod=mod github.com/larisgo/laravel-echo-server/main/laravel-echo-server
+
+server:
+	go install --tags '$(BUILDTAGS)' -ldflags '-s -w' -mod=mod github.com/larisgo/laravel-echo-server/main/laravel-echo-server
+
+release: BUILDTAGS=release
+
+static-release-all: fmt release static-server
+release-all: fmt release server
+
+all: fmt server
+static-all: fmt static-server
+
+clean:
+	go clean -mod=mod -r github.com/larisgo/laravel-echo-server/...
 
 run:
-	go build -o bin/laravel-echo-server main.go
-	sudo chmod +x bin/laravel-echo-server
-	bin/laravel-echo-server
+	GOOS="" GOARCH="" go install -mod=mod github.com/larisgo/laravel-echo-server/main/laravel-echo-server
+	vendor/bin/laravel-echo-server

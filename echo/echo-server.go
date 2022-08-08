@@ -3,56 +3,46 @@ package echo
 import (
 	"github.com/larisgo/laravel-echo-server/api"
 	"github.com/larisgo/laravel-echo-server/channels"
-	"github.com/larisgo/laravel-echo-server/log"
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/larisgo/laravel-echo-server/server"
 	"github.com/larisgo/laravel-echo-server/subscribers"
 	"github.com/larisgo/laravel-echo-server/types"
-	"github.com/larisgo/laravel-echo-server/utils"
-	"github.com/pschlump/socketio"
+	_utils "github.com/larisgo/laravel-echo-server/utils"
+	"github.com/mitchellh/mapstructure"
+	"github.com/zishang520/engine.io/utils"
+	"github.com/zishang520/socket.io/socket"
+	"sync"
 )
 
 type EchoServer struct {
-	/**
-	 * Default server options.
-	 */
-	DefaultOptions options.Config
 
-	/**
-	 * Configurable server options.
-	 */
-	options options.Config
+	// Default server options.
+	DefaultOptions *options.Config
 
-	/**
-	 * Socket.io server instance.
-	 */
+	// Configurable server options.
+	options *options.Config
+
+	// Socket.io server instance.
 	server *server.Server
 
-	/**
-	 * Channel instance.
-	 */
+	// Channel instance.
 	channel *channels.Channel
 
-	/**
-	 * Subscribers
-	 */
+	// Subscribers
 	subscribers []subscribers.Subscriber
 
-	/**
-	 * Http api instance.
-	 */
+	// Http api instance.
 	httpApi *api.HttpApi
+
+	mu sync.RWMutex
 }
 
-/**
- * Create a new instance.
- */
+// Create a new instance.
 func NewEchoServer() *EchoServer {
-	this := &EchoServer{}
+	ec := &EchoServer{}
 
-	this.DefaultOptions = options.Config{
+	ec.DefaultOptions = &options.Config{
 		AuthHost:     "http://localhost",
-		AuthProtocol: "http",
 		AuthEndpoint: "/broadcasting/auth",
 		Clients:      []options.Client{},
 		Database:     "redis",
@@ -65,7 +55,6 @@ func NewEchoServer() *EchoServer {
 		Host:        "127.0.0.1",
 		Port:        "6001",
 		Protocol:    "http",
-		Socketio:    options.Socketio{},
 		SslCertPath: "",
 		SslKeyPath:  "",
 		Subscribers: options.Subscribers{
@@ -80,167 +69,192 @@ func NewEchoServer() *EchoServer {
 		},
 	}
 
-	return this
+	return ec
 }
 
-/**
- * Start the Echo Server.
- */
-func (this *EchoServer) Run(Options options.Config) *EchoServer {
-	// _options, err := options.Assign(this.DefaultOptions, Options)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	this.options = Options
-	this.Startup()
-
-	this.server = server.NewServer(this.options)
-	io, err := this.server.Init()
+// Start the Echo Server.
+func (ec *EchoServer) Run(_options *options.Config) error {
+	ops, err := options.Assign(ec.DefaultOptions, _options)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	this.Init(io)
+	ec.options = ops
+	ec.Startup()
 
-	log.Info("Server ready!")
-	return this
+	ec.server = server.NewServer(ec.options)
+	io, err := ec.server.Init()
+	if err != nil {
+		return err
+	}
+	if err := ec.Init(io); err != nil {
+		return err
+	}
+
+	utils.Log().Info("Server ready!")
+	return nil
 }
 
-/**
- * Initialize the class
- */
-func (this *EchoServer) Init(io *socketio.Server) {
-	this.channel = channels.NewChannel(io, this.options)
-	this.subscribers = []subscribers.Subscriber{}
-	if this.options.Subscribers.Http {
-		this.subscribers = append(this.subscribers, subscribers.NewHttpSubscriber(this.server.Express, this.options))
-	}
-	if this.options.Subscribers.Redis {
-		this.subscribers = append(this.subscribers, subscribers.NewRedisSubscriber(this.options))
+// Initialize the class
+func (ec *EchoServer) Init(io *socket.Server) (err error) {
+	ec.channel, err = channels.NewChannel(io, ec.options)
+	if err != nil {
+		return err
 	}
 
-	this.httpApi = api.NewHttpApi(io, this.channel, this.server.Express, this.options)
-	this.httpApi.Init()
-	this.OnConnect()
-	this.Listen()
+	ec.mu.Lock()
+	ec.subscribers = []subscribers.Subscriber{}
+	ec.mu.Unlock()
+	if ec.options.Subscribers.Http {
+		ec.mu.Lock()
+		ec.subscribers = append(ec.subscribers, subscribers.NewHttpSubscriber(ec.server.Express, ec.options))
+		ec.mu.Unlock()
+	}
+	if ec.options.Subscribers.Redis {
+		r, err := subscribers.NewRedisSubscriber(ec.options)
+		if err != nil {
+			return err
+		}
+		ec.mu.Lock()
+		ec.subscribers = append(ec.subscribers, r)
+		ec.mu.Unlock()
+	}
+
+	ec.httpApi = api.NewHttpApi(io, ec.channel, ec.server.Express, ec.options)
+	ec.httpApi.Init()
+
+	ec.OnConnect()
+	ec.Listen()
+	return nil
 }
 
-/**
- * Text shown at Startup.
- */
-func (this *EchoServer) Startup() {
-	log.Line(`                         __             __
-|   _  __ _     _  |    |_  _ |_  _    (_  _  __    _  __
-|__(_| | (_|\_/(/_ |    |__(_ | |(_)   __)(/_ | \_/(/_ |
-	`)
-	log.Line(utils.VERSION)
+// Text shown at Startup.
+func (ec *EchoServer) Startup() {
+	utils.Log().Println(_utils.TITLE)
+	utils.Log().Println(_utils.VERSION)
 
-	if this.options.DevMode {
-		log.Warning("Starting server in DEV mode...")
+	if ec.options.DevMode {
+		utils.Log().Warning("Starting server in DEV mode...")
 	} else {
-		log.Info("Starting server...")
+		utils.Log().Info("Starting server...")
 	}
 }
 
-/**
- * Listen for incoming event from subscibers.
- */
-func (this *EchoServer) Listen() {
-	for _, subscriber := range this.subscribers {
-		subscriber.Subscribe(func(channel string, message types.Data) {
-			this.Broadcast(channel, message)
+// Stop the echo server.
+func (ec *EchoServer) Stop() {
+	utils.Log().Default("Stopping the LARAVEL ECHO SERVER")
+
+	ec.mu.RLock()
+	for _, subscriber := range ec.subscribers {
+		subscriber.UnSubscribe()
+	}
+	ec.mu.RUnlock()
+
+	ec.channel.Presence.Close()
+
+	ec.server.Io.Close(nil)
+
+	ec.mu.Lock()
+	ec.subscribers = nil
+	ec.mu.Unlock()
+
+	utils.Log().Default("The LARAVEL ECHO SERVER server has been stopped.")
+}
+
+// Listen for incoming event from subscibers.
+func (ec *EchoServer) Listen() {
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
+
+	for _, subscriber := range ec.subscribers {
+		subscriber.Subscribe(func(channel string, message *types.Data) {
+			ec.Broadcast(channel, message)
 		})
 	}
 }
 
-/**
- * Return a channel by its socket id.
- */
-func (this *EchoServer) Find(socket_id string) socketio.Socket {
-	return this.server.Io.GetSocket(socket_id)
+// Return a channel by its socket id.
+func (ec *EchoServer) Find(id string) *socket.Socket {
+	if _socket, ok := ec.server.Io.Sockets().Sockets().Load(id); ok {
+		return _socket.(*socket.Socket)
+	}
+	return nil
 }
 
-/**
- * Broadcast events to channels from subscribers.
- */
-func (this *EchoServer) Broadcast(channel string, message types.Data) bool {
-	if socket := this.Find(message.Socket); message.Socket != "" && socket != nil {
-		return this.ToOthers(socket, channel, message)
+// Broadcast events to channels from subscribers.
+func (ec *EchoServer) Broadcast(channel string, message *types.Data) error {
+	if socket := ec.Find(message.Socket); message.Socket != "" && socket != nil {
+		return ec.ToOthers(socket, channel, message)
 	} else {
-		return this.ToAll(channel, message)
+		return ec.ToAll(channel, message)
 	}
 }
 
-/**
- * Broadcast to others on channel.
- */
-func (this *EchoServer) ToOthers(socket socketio.Socket, channel string, message types.Data) bool {
-	socket.BroadcastTo(channel, message.Event, channel, message.Data)
-	return true
+// Broadcast to others on channel.
+func (ec *EchoServer) ToOthers(_socket *socket.Socket, channel string, message *types.Data) error {
+	return _socket.Broadcast().To(socket.Room(channel)).Emit(message.Event, channel, message.Data)
 }
 
-/**
- * Broadcast to all members on channel.
- */
-func (this *EchoServer) ToAll(channel string, message types.Data) bool {
-	this.server.Io.BroadcastTo(channel, message.Event, channel, message.Data)
-	return true
+// Broadcast to all members on channel.
+func (ec *EchoServer) ToAll(channel string, message *types.Data) error {
+	return ec.server.Io.To(socket.Room(channel)).Emit(message.Event, channel, message.Data)
 }
 
-/**
- * On server connection.
- */
-func (this *EchoServer) OnConnect() {
-	this.server.Io.On("connection", func(socket socketio.Socket) error {
-		this.OnSubscribe(socket)
-		this.OnUnsubscribe(socket)
-		this.OnDisconnecting(socket)
-		this.OnClientEvent(socket)
-		return nil
+// On server connection.
+func (ec *EchoServer) OnConnect() {
+	ec.server.Io.On("connection", func(clients ...interface{}) {
+		client := clients[0].(*socket.Socket)
+		ec.OnSubscribe(client)
+		ec.OnUnsubscribe(client)
+		ec.OnDisconnecting(client)
+		ec.OnClientEvent(client)
 	})
-	this.server.Io.On("error", func(socket socketio.Socket, err error) error {
-		log.Error(err)
-		return nil
+	ec.server.Io.On("error", func(errs ...interface{}) {
+		// errs = append(errs, (interface{})(""))
+		utils.Log().Error("%v", errs[0])
 	})
 }
 
-/**
- * On subscribe to a channel.
- */
-func (this *EchoServer) OnSubscribe(socket socketio.Socket) {
-	socket.On("subscribe", func(coon socketio.Socket, data types.Data) error {
-		this.channel.Join(socket, data)
-		return nil
-	})
-}
-
-/**
- * On unsubscribe from a channel.
- */
-func (this *EchoServer) OnUnsubscribe(socket socketio.Socket) {
-	socket.On("unsubscribe", func(coon socketio.Socket, data types.Data) error {
-		this.channel.Leave(socket, data.Channel, "unsubscribed")
-		return nil
-	})
-}
-
-/**
- * On socket disconnecting.
- */
-func (this *EchoServer) OnDisconnecting(socket socketio.Socket) {
-	socket.On("disconnect", func(socket socketio.Socket) error {
-		for _, room := range socket.Rooms() {
-			this.channel.Leave(socket, room, "disconnect")
+// On subscribe to a channel.
+func (ec *EchoServer) OnSubscribe(_socket *socket.Socket) {
+	_socket.On("subscribe", func(msgs ...interface{}) {
+		var data *types.Data
+		if err := mapstructure.Decode(msgs[0], &data); err != nil {
+			utils.Log().Error("OnSubscribe error: %v", err)
+			return
 		}
-		return nil
+		ec.channel.Join(_socket, data)
 	})
 }
 
-/**
- * On client events.
- */
-func (this *EchoServer) OnClientEvent(socket socketio.Socket) {
-	socket.On("client event", func(coon socketio.Socket, data types.Data) error {
-		this.channel.ClientEvent(socket, data)
-		return nil
+// On unsubscribe from a channel.
+func (ec *EchoServer) OnUnsubscribe(_socket *socket.Socket) {
+	_socket.On("unsubscribe", func(msgs ...interface{}) {
+		var data *types.Data
+		if err := mapstructure.Decode(msgs[0], &data); err != nil {
+			utils.Log().Error("OnUnsubscribe error: %v", err)
+			return
+		}
+		ec.channel.Leave(_socket, data.Channel, "unsubscribed")
+	})
+}
+
+// On socket disconnecting.
+func (ec *EchoServer) OnDisconnecting(_socket *socket.Socket) {
+	_socket.On("disconnect", func(reasons ...interface{}) {
+		for _, room := range _socket.Rooms().Keys() {
+			ec.channel.Leave(_socket, string(room), reasons[0].(string))
+		}
+	})
+}
+
+// On client events.
+func (ec *EchoServer) OnClientEvent(_socket *socket.Socket) {
+	_socket.On("client event", func(msgs ...interface{}) {
+		var data *types.Data
+		if err := mapstructure.Decode(msgs[0], &data); err != nil {
+			utils.Log().Error("OnClientEvent error: %v", err)
+			return
+		}
+		ec.channel.ClientEvent(_socket, data)
 	})
 }

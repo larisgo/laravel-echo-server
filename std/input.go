@@ -1,3 +1,4 @@
+// Source: https://github.com/ukautz/clif/blob/v1/input.go
 package std
 
 import (
@@ -54,7 +55,7 @@ var (
 	RenderInputRequiredError = fmt.Errorf("Input required")
 )
 
-func (this *DefaultInput) Ask(question string, check func(string) error, _default ...string) string {
+func (i *DefaultInput) Ask(question string, check func(string) error, _default ...string) string {
 	_default = append(_default, "")
 	if check == nil {
 		check = func(in string) error {
@@ -65,27 +66,27 @@ func (this *DefaultInput) Ask(question string, check func(string) error, _defaul
 			}
 		}
 	}
-	reader := bufio.NewReader(this.in)
+	reader := bufio.NewReader(i.in)
 	for {
 		_d := ""
 		if len(_default[0]) > 0 {
-			_d = color.Primary.Sprint(fmt.Sprintf("(%s)", _default[0]))
+			_d = color.Primary.Sprint(fmt.Sprintf(" (%s) ", _default[0]))
 		}
-		this.out.Printf(RenderAskQuestion(question) + _d)
+		i.out.Printf(RenderAskQuestion(question) + _d)
 		line, _, err := reader.ReadLine()
 		for err == io.EOF {
 			<-time.After(time.Millisecond)
 			line, _, err = reader.ReadLine()
 		}
 		if err != nil {
-			this.out.Printf("%s\n\n", color.Warn.Sprint(err))
+			i.out.Printf("%s\n\n", color.Warn.Sprint(err))
 		} else {
 			s := string(line)
 			if len(s) == 0 {
 				s = _default[0]
 			}
 			if err = check(s); err != nil {
-				this.out.Printf("%s\n\n", color.Warn.Sprint(err))
+				i.out.Printf("%s\n\n", color.Warn.Sprint(err))
 			} else {
 				return s
 			}
@@ -113,7 +114,7 @@ var RenderChooseQuery = func() string {
 	return "Choose: "
 }
 
-func (this *DefaultInput) Choose(question string, choices map[string]string, _default ...string) string {
+func (i *DefaultInput) Choose(question string, choices map[string]string, _default ...string) string {
 	_default = append(_default, "")
 	options := RenderChooseQuestion(question)
 	keys := []string{}
@@ -129,7 +130,7 @@ func (this *DefaultInput) Choose(question string, choices map[string]string, _de
 		options += RenderChooseOption(k, choices[k], max)
 	}
 	options += RenderChooseQuery()
-	return this.Ask(options, func(in string) error {
+	return i.Ask(options, func(in string) error {
 		if _, ok := choices[in]; ok {
 			return nil
 		} else {
@@ -148,11 +149,11 @@ var ConfirmYesRegex = regexp.MustCompile(`^(?i)y(es)?$`)
 // ConfirmNoRegex is the regular expression used to check if the user replied negative
 var ConfirmNoRegex = regexp.MustCompile(`^(?i)no?$`)
 
-func (this *DefaultInput) Confirm(question string, _default ...bool) bool {
+func (i *DefaultInput) Confirm(question string, _default ...bool) bool {
 	_default = append(_default, false)
 	cb := func(value string) error { return nil }
 	for {
-		res := this.Ask(question+color.Primary.Sprint(map[bool]string{true: " (Y|n)", false: " (y|N)"}[_default[0]]), cb)
+		res := i.Ask(question+color.Primary.Sprint(map[bool]string{true: " (Y|n) ", false: " (y|N) "}[_default[0]]), cb)
 		if len(res) == 0 {
 			return _default[0]
 		}
@@ -161,7 +162,7 @@ func (this *DefaultInput) Confirm(question string, _default ...bool) bool {
 		} else if ConfirmNoRegex.MatchString(res) {
 			return false
 		} else {
-			this.out.Printf(ConfirmRejection)
+			i.out.Printf(ConfirmRejection)
 		}
 	}
 }

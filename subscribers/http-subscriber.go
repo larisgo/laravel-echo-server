@@ -3,88 +3,81 @@ package subscribers
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/julienschmidt/httprouter"
-	"github.com/larisgo/laravel-echo-server/errors"
 	"github.com/larisgo/laravel-echo-server/express"
-	"github.com/larisgo/laravel-echo-server/log"
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/larisgo/laravel-echo-server/types"
-	"io/ioutil"
+	"github.com/zishang520/engine.io/utils"
+	"io"
 	"net/http"
 	"strings"
 )
 
 type HttpSubscriber struct {
-	/**
-	 * The server.
-	 *
-	 * @type {*httprouter.Router}
-	 */
+
+	// The server.
 	express *express.Express
 
-	/**
-	 * Configurable server options.
-	 */
-	options options.Config
+	// Configurable server options.
+	options *options.Config
+
+	_close bool
 }
 
-/**
- * Create new instance of http subscriber.
- *
- * @param  {any} express
- */
-func NewHttpSubscriber(express *express.Express, Options options.Config) Subscriber {
-	this := &HttpSubscriber{}
-	this.express = express
-	this.options = Options
-	return Subscriber(this)
+// Create new instance of http subscriber.
+func NewHttpSubscriber(express *express.Express, _options *options.Config) Subscriber {
+	sub := &HttpSubscriber{}
+	sub.express = express
+	sub.options = _options
+	sub._close = false
+	return sub
 }
 
-/**
- * Subscribe to events to broadcast.
- *
- * @return {void}
- */
-func (this *HttpSubscriber) Subscribe(callback Broadcast) {
+// Subscribe to events to broadcast.
+func (sub *HttpSubscriber) Subscribe(callback Broadcast) {
 	// Broadcast a message to a channel
-	this.express.Route().POST("/apps/:appId/events", this.express.AuthorizeRequests(func(w http.ResponseWriter, r *http.Request, router httprouter.Params) {
-		this.handleData(w, r, router, callback)
+	sub.express.Route().POST("/apps/:appId/events", sub.express.AuthorizeRequests(func(w http.ResponseWriter, r *http.Request, router httprouter.Params) {
+		if sub._close {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write(nil)
+		} else {
+			sub.handleData(w, r, router, callback)
+		}
 	}))
 
-	log.Success("Listening for http events...")
+	utils.Log().Success("Listening for http events...")
 }
 
-/**
- * Handle incoming event data.
- *
- * @param  {any} req
- * @param  {any} res
- * @param  {any} body
- * @param  {Broadcast} callback
- * @return {boolean}
- */
-func (this *HttpSubscriber) handleData(w http.ResponseWriter, r *http.Request, router httprouter.Params, callback Broadcast) error {
-	// body = JSON.parse(Buffer.concat(body).toString());
-	post_data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		this.badResponse(w, r, `Failed to get data`)
-		return err
+// Unsubscribe from events to broadcast.
+func (sub *HttpSubscriber) UnSubscribe() {
+	sub._close = true
+}
+
+// Handle incoming event data.
+func (sub *HttpSubscriber) handleData(w http.ResponseWriter, r *http.Request, router httprouter.Params, broadcast Broadcast) {
+	data := bytes.NewBuffer(nil)
+
+	if bd, ok := r.Body.(io.ReadCloser); ok && bd != nil {
+		data.ReadFrom(bd)
+		bd.Close()
+	} else {
+		sub.badResponse(w, r, `Event must include channel, event name and data`)
+		return
 	}
 
 	var body HttpSubscriberData
-	if err := json.Unmarshal(post_data, &body); err != nil {
-		this.badResponse(w, r, `JSON parsing error`)
-		return err
+	if err := json.NewDecoder(data).Decode(&body); err != nil {
+		sub.badResponse(w, r, err.Error())
+		return
 	}
 	if (len(body.Channels) > 0 || body.Channel != "") && body.Name != "" && body.Data != "" {
 		var data interface{}
 		if err := json.Unmarshal([]byte(body.Data), &data); err != nil {
-			this.badResponse(w, r, `Body data JSON parsing error`)
-			return err
+			sub.badResponse(w, r, err.Error())
+			return
 		}
 
-		message := types.Data{
+		message := &types.Data{
 			Event:  body.Name,
 			Data:   data,
 			Socket: body.SocketId,
@@ -96,47 +89,41 @@ func (this *HttpSubscriber) handleData(w http.ResponseWriter, r *http.Request, r
 			channels = []string{body.Channel}
 		}
 
-		if this.options.DevMode {
-			log.Info(fmt.Sprintf("Channel: %s", this.join(channels, ", ")))
-			log.Info(fmt.Sprintf("Event: %s", message.Event))
+		if sub.options.DevMode {
+			utils.Log().Info("Channel: " + sub.join(channels, ", "))
+			utils.Log().Info("Event: " + message.Event)
 		}
 		for _, channel := range channels {
 			// sync
-			callback(strings.TrimPrefix(channel, this.options.DatabaseConfig.Prefix), message)
+			broadcast(channel, message)
 		}
 	} else {
-		this.badResponse(w, r, `Event must include channel, event name and data`)
-		return errors.NewError(`Event must include channel, event name and data`)
+		sub.badResponse(w, r, `Event must include channel, event name and data`)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	fmt.Fprint(w, fmt.Sprintf(`{"message": "OK"}`))
-
-	return nil
+	io.WriteString(w, `{"message":"ok"}`)
 }
 
-/**
- * Handle bad Request.
- *
- * @param  {http.ResponseWriter} w
- * @param  {*http.Request} r
- */
-func (this *HttpSubscriber) badResponse(w http.ResponseWriter, r *http.Request, message string) {
+// Handle bad Request.
+func (sub *HttpSubscriber) badResponse(w http.ResponseWriter, r *http.Request, message string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(400)
-	fmt.Fprint(w, fmt.Sprintf(`{"error": "%s"}`, message))
+	w.WriteHeader(http.StatusBadRequest)
+	data, _ := json.Marshal(map[string]interface{}{
+		"error": message,
+	})
+	w.Write(data)
 }
 
-/**
- * join
- */
-func (this *HttpSubscriber) join(v []string, splite string) string {
-	var buf bytes.Buffer
+// join
+func (sub *HttpSubscriber) join(v []string, splite string) string {
+	sb := new(strings.Builder)
 	for _, v := range v {
-		if buf.Len() > 0 {
-			buf.WriteString(splite)
+		if sb.Len() > 0 {
+			sb.WriteString(splite)
 		}
-		buf.WriteString(v)
+		sb.WriteString(v)
 	}
-	return buf.String()
+	return sb.String()
 }

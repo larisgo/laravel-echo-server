@@ -10,10 +10,12 @@ type Client struct {
 }
 
 type Redis struct {
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	Password string `json:"password"`
-	Db       int    `json:"db"`
+	Host      string `json:"host"`
+	Port      string `json:"port"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	KeyPrefix string `json:"keyPrefix"`
+	Db        int    `json:"db"`
 }
 
 type Sqlite struct {
@@ -23,17 +25,10 @@ type Sqlite struct {
 type DatabaseConfig struct {
 	Redis           Redis  `json:"redis"`
 	Sqlite          Sqlite `json:"sqlite"`
-	Prefix          string `json:"prefix"`
 	PublishPresence bool   `json:"publishPresence"`
 }
 
 type Hosts []string
-
-type Socketio struct {
-	PingTimeout   int `json:"pingTimeout"`
-	PingInterval  int `json:"pingInterval"`
-	MaxConnection int `json:"maxConnection"`
-}
 
 type Subscribers struct {
 	Http  bool `json:"http"`
@@ -49,7 +44,6 @@ type ApiOriginAllow struct {
 
 type Config struct {
 	AuthHost       interface{}       `json:"authHost"`
-	AuthProtocol   string            `json:"authProtocol"`
 	AuthEndpoint   string            `json:"authEndpoint"`
 	Clients        []Client          `json:"clients"`
 	Database       string            `json:"database"`
@@ -58,7 +52,7 @@ type Config struct {
 	Host           interface{}       `json:"host"`
 	Port           string            `json:"port"`
 	Protocol       string            `json:"protocol"`
-	Socketio       Socketio          `json:"socketio"`
+	Socketio       *ServerOptions    `json:"socketio"`
 	SslCertPath    string            `json:"sslCertPath"`
 	SslKeyPath     string            `json:"sslKeyPath"`
 	Subscribers    Subscribers       `json:"subscribers"`
@@ -66,8 +60,8 @@ type Config struct {
 	Headers        map[string]string `json:"header"`
 }
 
-func Assign(_old Config, _new Config) (Config, error) {
-	_default := Config{}
+func Assign(_old *Config, _new *Config) (*Config, error) {
+	_default := &Config{}
 	if old_data, err := json.Marshal(_old); err != nil {
 		return _default, err
 	} else {

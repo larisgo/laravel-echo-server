@@ -1,190 +1,155 @@
 package channels
 
 import (
-	"fmt"
-	"github.com/larisgo/laravel-echo-server/log"
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/larisgo/laravel-echo-server/types"
-	"github.com/pschlump/socketio"
+	"github.com/zishang520/engine.io/utils"
+	"github.com/zishang520/socket.io/socket"
 	"regexp"
 	"strings"
 )
 
 type Channel struct {
-	/**
-	 * Channels and patters for private channels.
-	 */
-	privateChannels []string
 
-	/**
-	 * Allowed client events
-	 */
-	clientEvents []string
+	// Channels and patters for private channels.
+	privateChannels []*regexp.Regexp
 
-	/**
-	 * Private channel instance.
-	 */
+	// Allowed client events
+	clientEvents []*regexp.Regexp
+
+	// Private channel instance.
 	Private *PrivateChannel
 
-	/**
-	 * Presence channel instance.
-	 */
+	// Presence channel instance.
 	Presence *PresenceChannel
 
-	/**
-	 * Configurable server options.
-	 */
-	options options.Config
+	// Configurable server options.
+	options *options.Config
 
-	/**
-	 * Socket.io client.
-	 *
-	 * @type {*socketio.Server}
-	 */
-	io *socketio.Server
+	// Socket.io client.
+	io *socket.Server
 }
 
-/**
- * Create a new channel instance.
- */
-func NewChannel(io *socketio.Server, Options options.Config) *Channel {
-	this := &Channel{}
+// Create a new channel instance.
+func NewChannel(io *socket.Server, _options *options.Config) (ch *Channel, err error) {
+	ch = &Channel{}
 
-	this.io = io
-	this.options = Options
+	ch.io = io
+	ch.options = _options
 
-	this.privateChannels = []string{
-		`private-*`,
-		`presence-*`,
+	ch.privateChannels = []*regexp.Regexp{
+		regexp.MustCompile(strings.ReplaceAll(regexp.QuoteMeta(`private-*`), `\*`, `.*`)),
+		regexp.MustCompile(strings.ReplaceAll(regexp.QuoteMeta(`presence-*`), `\*`, `.*`)),
 	}
 
-	this.clientEvents = []string{
-		`client-*`,
+	ch.clientEvents = []*regexp.Regexp{
+		regexp.MustCompile(strings.ReplaceAll(regexp.QuoteMeta(`client-*`), `\*`, `.*`)),
 	}
 
-	this.Private = NewPrivateChannel(this.options)
-	this.Presence = NewPresenceChannel(io, this.options)
-
-	if this.options.DevMode {
-		log.Success(`Channels are ready.`)
+	ch.Private = NewPrivateChannel(ch.options)
+	ch.Presence, err = NewPresenceChannel(io, ch.options)
+	if err != nil {
+		return nil, err
 	}
 
-	return this
+	if ch.options.DevMode {
+		utils.Log().Success(`Channels are ready.`)
+	}
+
+	return ch, nil
 }
 
-/**
- * Join a channel.
- */
-func (this *Channel) Join(socket socketio.Socket, data types.Data) {
+// Join a channel.
+func (ch *Channel) Join(_socket *socket.Socket, data *types.Data) {
 	if data.Channel != "" {
-		if this.IsPrivate(data.Channel) {
-			this.JoinPrivate(socket, data)
+		if ch.IsPrivate(data.Channel) {
+			ch.JoinPrivate(_socket, data)
 		} else {
-			socket.Join(data.Channel)
-			this.OnJoin(socket, data.Channel)
+			_socket.Join(socket.Room(data.Channel))
+			ch.OnJoin(_socket, data.Channel)
 		}
 	}
 }
 
-/**
- * Trigger a client message
- */
-func (this *Channel) ClientEvent(socket socketio.Socket, data types.Data) {
+// Trigger a client message
+func (ch *Channel) ClientEvent(_socket *socket.Socket, data *types.Data) {
 	if data.Event != "" && data.Channel != "" {
-		if this.IsClientEvent(data.Event) &&
-			this.IsPrivate(data.Channel) &&
-			this.IsInChannel(socket, data.Channel) {
-			socket.BroadcastTo(data.Channel, data.Event, data.Channel, data.Data)
+		if ch.IsClientEvent(data.Event) &&
+			ch.IsPrivate(data.Channel) &&
+			ch.IsInChannel(_socket, data.Channel) {
+			// ch.io.Sockets().Sockets().Load(_socket.Id())
+			_socket.Broadcast().To(socket.Room(data.Channel)).Emit(data.Event, data.Channel, data.Data)
 		}
 	}
 }
 
-/**
- * Leave a channel.
- */
-func (this *Channel) Leave(socket socketio.Socket, channel string, reason string) {
+// Leave a channel.
+func (ch *Channel) Leave(_socket *socket.Socket, channel string, reason string) {
 	if channel != "" {
-		if this.IsPresence(channel) {
-			this.Presence.Leave(socket, channel)
+		if ch.IsPresence(channel) {
+			ch.Presence.Leave(_socket, channel)
 		}
 
-		socket.Leave(channel)
+		_socket.Leave(socket.Room(channel))
 
-		if this.options.DevMode {
-			log.Info(fmt.Sprintf(`%s left channel: %s (%s)`, socket.Id(), channel, reason))
+		if ch.options.DevMode {
+			utils.Log().Info(`%s left channel: %s (%s)`, _socket.Id(), channel, reason)
 		}
 	}
 }
 
-/**
- * Check if the incoming socket connection is a private channel.
- */
-func (this *Channel) IsPrivate(channel string) bool {
-	for _, privateChannel := range this.privateChannels {
-		if regexp.MustCompile(strings.ReplaceAll(regexp.QuoteMeta(privateChannel), `\*`, `.*`)).MatchString(channel) {
+// Check if the incoming socket connection is a private channel.
+func (ch *Channel) IsPrivate(channel string) bool {
+	for _, privateChannel := range ch.privateChannels {
+		if privateChannel.MatchString(channel) {
 			return true
 		}
 	}
 	return false
 }
 
-/**
- * Join private channel, emit data to presence channels.
- */
-func (this *Channel) JoinPrivate(socket socketio.Socket, data types.Data) {
-	res, code, err := this.Private.Authenticate(socket, data)
+// Join private channel, emit data to presence channels.
+func (ch *Channel) JoinPrivate(_socket *socket.Socket, data *types.Data) {
+	res, status, err := ch.Private.Authenticate(_socket, data)
 	if err != nil {
-		if this.options.DevMode {
-			log.Error(err)
+		if ch.options.DevMode {
+			utils.Log().Error("%v", err)
 		}
-		socket.Emit("subscription_error", data.Channel, code)
+		_socket.Emit("subscription_error", data.Channel, status)
 	} else {
-		socket.Join(data.Channel)
-		if this.IsPresence(data.Channel) {
-			if res_channel_data, is_authenticatedata := res.(types.AuthenticateData); is_authenticatedata {
-				if _, err := this.Presence.Join(socket, data.Channel, &res_channel_data.ChannelData); err != nil {
-					if this.options.DevMode {
-						log.Error(err)
-					}
-				}
+		_socket.Join(socket.Room(data.Channel))
+		if ch.IsPresence(data.Channel) {
+			if channel_data, is_auth := res.(*types.AuthenticateData); is_auth {
+				ch.Presence.Join(_socket, data.Channel, &channel_data.ChannelData)
 			}
 		}
-		this.OnJoin(socket, data.Channel)
+		ch.OnJoin(_socket, data.Channel)
 	}
-
 }
 
-/**
- * Check if a channel is a presence channel.
- */
-func (this *Channel) IsPresence(channel string) bool {
+// Check if a channel is a presence channel.
+func (ch *Channel) IsPresence(channel string) bool {
 	return strings.LastIndex(channel, `presence-`) == 0
 }
 
-/**
- * On join a channel log success.
- */
-func (this *Channel) OnJoin(socket socketio.Socket, channel string) {
-	if this.options.DevMode {
-		log.Info(fmt.Sprintf(`%s joined channel: %s`, socket.Id(), channel))
+// On join a channel log success.
+func (ch *Channel) OnJoin(_socket *socket.Socket, channel string) {
+	if ch.options.DevMode {
+		utils.Log().Info(`%s joined channel: %s`, _socket.Id(), channel)
 	}
 }
 
-/**
- * Check if client is a client event
- */
-func (this *Channel) IsClientEvent(event string) bool {
-	for _, clientEvent := range this.clientEvents {
-		if regexp.MustCompile(strings.ReplaceAll(regexp.QuoteMeta(clientEvent), `\*`, `.*`)).MatchString(event) {
+// Check if client is a client event
+func (ch *Channel) IsClientEvent(event string) bool {
+	for _, clientEvent := range ch.clientEvents {
+		if clientEvent.MatchString(event) {
 			return true
 		}
 	}
 	return false
 }
 
-/**
- * Check if a socket has joined a channel.
- */
-func (this *Channel) IsInChannel(socket socketio.Socket, channel string) bool {
-	return socket.HasRoom(channel)
+// Check if a socket has joined a channel.
+func (ch *Channel) IsInChannel(_socket *socket.Socket, channel string) bool {
+	return _socket.Rooms().Has(socket.Room(channel))
 }

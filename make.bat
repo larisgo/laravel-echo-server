@@ -5,73 +5,76 @@ pushd "%~dp0"
 setlocal ENABLEDELAYEDEXPANSION
 set GOPATH="%~dp0vendor"
 rem Set the GOPROXY environment variable
-set GOPROXY=https://goproxy.io
+Set GOPROXY=https://goproxy.io,direct
+rem set http_proxy=socks5://127.0.0.1:1080
+rem set https_proxy=%http_proxy%
 
-if /i "%args%"=="install" goto install
-if /i "%args%"=="all" goto all
-if /i "%args%"=="run" goto run
+if /i "%args%"=="default" goto %args%
+if /i "%args%"=="static-server" goto %args%
+if /i "%args%"=="deps" goto %args%
+if /i "%args%"=="fmt" goto %args%
+if /i "%args%"=="server" goto %args%
+if /i "%args%"=="static-release-all" goto %args%
+if /i "%args%"=="release-all" goto %args%
+if /i "%args%"=="all" goto %args%
+if /i "%args%"=="static-all" goto %args%
+if /i "%args%"=="run" goto %args%
 
-goto DEFAULT_CASE
-:install
-    mkdir vendor
-    CALL go mod tidy
-    GOTO END_CASE
-:all
-    echo ========================
-    echo build darwin_386/laravel-echo-server
-    set GOOS=darwin
-    set GOARCH=386
-    CALL go build -ldflags "-s -w" -o "bin/darwin_386/laravel-echo-server" main.go
+if /i "%BUILDTAGS%"=="" (Set BUILDTAGS=release)
 
-    echo ========================
-    echo build darwin_amd64/laravel-echo-server
-    set GOOS=darwin
-    set GOARCH=amd64
-    CALL go build -ldflags "-s -w" -o "bin/darwin_amd64/laravel-echo-server" main.go
-
-    echo ========================
-    echo build linux_386/laravel-echo-server
-    set GOOS=linux
-    set GOARCH=386
-    CALL go build -ldflags "-s -w" -o "bin/linux_386/laravel-echo-server" main.go
-
-    echo ========================
-    echo build linux_amd64/laravel-echo-server
-    set GOOS=linux
-    set GOARCH=amd64
-    CALL go build -ldflags "-s -w" -o "bin/linux_amd64/laravel-echo-server" main.go
-
-    echo ========================
-    echo build linux_arm/laravel-echo-server
-    set GOOS=linux
-    set GOARCH=arm
-    CALL go build -ldflags "-s -w" -o "bin/linux_arm/laravel-echo-server" main.go
-
-    echo ========================
-    echo build linux_arm64/laravel-echo-server
-    set GOOS=linux
-    set GOARCH=arm64
-    CALL go build -ldflags "-s -w" -o "bin/linux_arm64/laravel-echo-server" main.go
-
-    echo ========================
-    echo build windows_386/laravel-echo-server.exe
-    set GOOS=windows
-    set GOARCH=386
-    CALL go build -ldflags "-s -w" -o "bin/windows_386/laravel-echo-server.exe" main.go
-
-    echo ========================
-    echo build windows_amd64/laravel-echo-server.exe
-    set GOOS=windows
-    set GOARCH=amd64
-    CALL go build -ldflags "-s -w" -o "bin/windows_amd64/laravel-echo-server.exe" main.go
-
-    GOTO END_CASE
-:run
-    CALL go build -o bin\main.exe main.go && CALL %~dp0\bin\main.exe
-    GOTO END_CASE
-:DEFAULT_CASE
-    CALL go mod tidy
-    CALL go build -ldflags "-s -w" -o bin\main.exe main.go
-    GOTO END_CASE
-:END_CASE
+:default
+    CALL :all
     GOTO :EOF
+
+:deps
+    CALL go mod tidy -v
+    CALL go mod vendor -v
+    GOTO :EOF
+
+:fmt
+    CALL go fmt -mod=mod github.com/larisgo/laravel-echo-server/...
+    GOTO :EOF
+
+:static-server
+    Set CGO_ENABLED=0
+    CALL go install --tags "%BUILDTAGS%" -ldflags "-s -w -extldflags ""-static""" -mod=mod github.com/larisgo/laravel-echo-server/main/laravel-echo-server
+    GOTO :EOF
+
+:server
+    CALL go install --tags "%BUILDTAGS%" -ldflags "-s -w" -mod=mod github.com/larisgo/laravel-echo-server/main/laravel-echo-server
+    GOTO :EOF
+
+:release
+    Set BUILDTAGS=release
+    GOTO :EOF
+
+:static-release-all
+    CALL :fmt
+    CALL :release
+    CALL :static-server
+    GOTO :EOF
+
+:release-all
+    CALL :fmt
+    CALL :release
+    CALL :server
+    GOTO :EOF
+
+:all
+    CALL :fmt
+    CALL :server
+    GOTO :EOF
+
+:static-all
+    CALL :fmt
+    CALL :static-server
+    GOTO :EOF
+
+:clean
+    CALL go clean -mod=mod -r github.com/larisgo/laravel-echo-server/...
+
+:run
+    Set GOOS=
+    Set GOARCH=
+    CALL go install -mod=mod github.com/larisgo/laravel-echo-server/main/laravel-echo-server
+    CALL "vendor\bin\laravel-echo-server.exe"

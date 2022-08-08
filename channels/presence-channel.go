@@ -2,76 +2,63 @@ package channels
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/larisgo/laravel-echo-server/database"
-	"github.com/larisgo/laravel-echo-server/errors"
-	"github.com/larisgo/laravel-echo-server/log"
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/larisgo/laravel-echo-server/types"
-	"github.com/pschlump/socketio"
-	"sync"
+	"github.com/zishang520/engine.io/utils"
+	"github.com/zishang520/socket.io/socket"
 )
 
 type PresenceChannel struct {
-	/**
-	 * Database instance.
-	 */
+
+	// Database instance.
 	db database.DatabaseDriver
 
-	/**
-	 * Configurable server options.
-	 */
-	options options.Config
+	// Configurable server options.
+	options *options.Config
 
-	/**
-	 * Socket.io client.
-	 *
-	 * @type {*socketio.Server}
-	 */
-	io *socketio.Server
-
-	// mu
-	mu sync.RWMutex
+	// Socket.io client.
+	io *socket.Server
 }
 
-/**
- * Create a NewPresence channel instance.
- */
-func NewPresenceChannel(io *socketio.Server, Options options.Config) *PresenceChannel {
-	this := &PresenceChannel{}
-	this.io = io
-	this.options = Options
-	this.db = database.NewDatabase(Options)
-	return this
-}
-
-/**
- * Get the members of a presence channel.
- */
-func (this *PresenceChannel) GetMembers(channel string) ([]*types.Member, error) {
-	members_byte, err := this.db.Get(fmt.Sprintf(`%s:members`, channel))
+// Create a NewPresence channel instance.
+func NewPresenceChannel(io *socket.Server, _options *options.Config) (pch *PresenceChannel, err error) {
+	pch = &PresenceChannel{}
+	pch.io = io
+	pch.options = _options
+	pch.db, err = database.NewDatabase(_options)
 	if err != nil {
 		return nil, err
 	}
-	if len(members_byte) == 0 {
-		return nil, nil
+	return pch, nil
+}
+
+func (pch *PresenceChannel) Close() error {
+	return pch.db.Close()
+}
+
+// Get the members of a presence channel.
+func (pch *PresenceChannel) GetMembers(channel string) (members types.Members, _ error) {
+	data, err := pch.db.Get(channel + ":members")
+	if err != nil {
+		return nil, err
 	}
-	var members []*types.Member
-	if err := json.Unmarshal(members_byte, &members); err != nil {
+	if len(data) == 0 {
+		return members, nil
+	}
+	if err := json.Unmarshal(data, &members); err != nil {
 		return nil, err
 	}
 	return members, nil
 }
 
-/**
- * Check if a user is on a presence channel.
- */
-func (this *PresenceChannel) IsMember(channel string, member *types.Member) (bool, error) {
-	members, err := this.GetMembers(channel)
+// Check if a user is on a presence channel.
+func (pch *PresenceChannel) IsMember(channel string, member *types.Member) (bool, error) {
+	members, err := pch.GetMembers(channel)
 	if err != nil {
 		return false, err
 	}
-	members, err = this.RemoveInactive(channel, members)
+	members, err = pch.RemoveInactive(channel, members, member)
 	if err != nil {
 		return false, err
 	}
@@ -80,136 +67,114 @@ func (this *PresenceChannel) IsMember(channel string, member *types.Member) (boo
 			return true, nil
 		}
 	}
-	return false, err
+	return false, nil
 }
 
-/**
- * Remove inactive channel members from the presence channel.
- */
-func (this *PresenceChannel) RemoveInactive(channel string, members []*types.Member) ([]*types.Member, error) {
-	clients := this.io.Clients(channel)
-	tmp_members := []*types.Member{}
+// Remove inactive channel members from the presence channel.
+func (pch *PresenceChannel) RemoveInactive(channel string, members types.Members, member *types.Member) (_members types.Members, _ error) {
+	clients, err := pch.io.Sockets().In(socket.Room(channel)).AllSockets()
+	if err != nil {
+		return nil, err
+	}
+
 	for _, member := range members {
-		if _, ok := clients[member.SocketId]; ok {
-			tmp_members = append(tmp_members, member)
+		if clients.Has(member.SocketId) {
+			_members = append(_members, member)
 		}
 	}
-	this.db.Set(fmt.Sprintf(`%s:members`, channel), tmp_members)
 
-	return tmp_members, nil
+	pch.db.Set(channel+":members", _members)
+
+	return _members, nil
 }
 
-func (this *PresenceChannel) uniq(members []*types.Member) []*types.Member {
-	result := []*types.Member{}
-	tempMap := map[int64]bool{} // 存放不重复主键
-	for _, e := range members {
-		l := len(tempMap)
-		tempMap[e.UserId] = true
-		if len(tempMap) != l { // 加入map后，map长度变化，则元素不重复
-			result = append(result, e)
-		}
-	}
-	return result
-}
-
-/**
- * Join a presence channel and emit that they have joined only if it is the
- * first instance of their presence.
- */
-func (this *PresenceChannel) Join(socket socketio.Socket, channel string, member *types.Member) (*types.Member, error) {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
+// Join a presence channel and emit that they have joined only if it is the
+// first instance of their presence.
+func (pch *PresenceChannel) Join(socket *socket.Socket, channel string, member *types.Member) error {
 	if member == nil {
-		if this.options.DevMode {
-			log.Error(`Unable to join channel. Member data for presence channel missing`)
+		if pch.options.DevMode {
+			utils.Log().Error(`Unable to join channel. Member data for presence channel missing`)
 		}
-		return nil, errors.NewError(`Unable to join channel. Member data for presence channel missing`)
+		return nil
 	}
-	is_member, err := this.IsMember(channel, member)
+	is_member, err := pch.IsMember(channel, member)
 	if err != nil {
-		if this.options.DevMode {
-			log.Error(err)
+		if pch.options.DevMode {
+			utils.Log().Error("%v", err)
 		}
-		return nil, err
+		return err
 	}
-	members, err := this.GetMembers(channel)
+	members, err := pch.GetMembers(channel)
 	if err != nil {
-		return nil, err
+		if pch.options.DevMode {
+			utils.Log().Error("%v", err)
+		}
+		return err
 	}
 	member.SocketId = socket.Id()
 	members = append(members, member)
 
-	this.db.Set(fmt.Sprintf(`%s:members`, channel), members)
+	pch.db.Set(channel+"%s:members", members)
 
-	members = this.uniq(members)
-
-	this.OnSubscribed(socket, channel, members)
+	pch.OnSubscribed(socket, channel, members.Unique(true))
 
 	if !is_member {
-		this.OnJoin(socket, channel, member)
+		pch.OnJoin(socket, channel, member)
 	}
-	return member, nil
+	return nil
 }
 
-/**
- * Remove a member from a presenece channel and broadcast they have left
- * only if not other presence channel instances exist.
- */
-func (this *PresenceChannel) Leave(socket socketio.Socket, channel string) (*types.Member, error) {
-	this.mu.Lock()
-	defer this.mu.Unlock()
-
-	members, err := this.GetMembers(channel)
+// Remove a member from a presenece channel and broadcast they have left
+// only if not other presence channel instances exist.
+func (pch *PresenceChannel) Leave(socket *socket.Socket, channel string) error {
+	members, err := pch.GetMembers(channel)
 	if err != nil {
-		if this.options.DevMode {
-			log.Error(err)
+		if pch.options.DevMode {
+			utils.Log().Error("%v", err)
 		}
-		return nil, err
+		return err
 	}
 
 	member := &types.Member{}
-	tmp_members := []*types.Member{}
+
+	_members := types.Members{}
 	for _, v := range members {
 		if v.SocketId == socket.Id() {
 			member = v
 		} else {
-			tmp_members = append(tmp_members, member)
+			_members = append(_members, v)
 		}
 	}
-	this.db.Set(fmt.Sprintf(`%s:members`, channel), tmp_members)
-	is_member, err := this.IsMember(channel, member)
+
+	pch.db.Set(channel+":members", _members)
+
+	is_member, err := pch.IsMember(channel, member)
 	if err != nil {
-		if this.options.DevMode {
+		if pch.options.DevMode {
 			// Error retrieving pressence channel members.
-			log.Error(err)
+			utils.Log().Error("%v", err)
 		}
-		return nil, err
+		return err
 	}
 	if !is_member {
-		member.SocketId = "" // 清除socketid
-		this.OnLeave(channel, member)
+		member.SocketId = ""
+		pch.OnLeave(channel, member)
 	}
-	return member, nil
+	return nil
 }
 
-/**
- * On join event handler.
- */
-func (this *PresenceChannel) OnJoin(socket socketio.Socket, channel string, member *types.Member) {
-	socket.BroadcastTo(channel, `presence:joining`, channel, member)
+// On join event handler.
+func (pch *PresenceChannel) OnJoin(_socket *socket.Socket, channel string, member *types.Member) {
+	// ch.io.Sockets().Sockets().Load(_socket.Id())
+	_socket.Broadcast().To(socket.Room(channel)).Emit("presence:joining", channel, member)
 }
 
-/**
- * On Leave emitter.
- */
-func (this *PresenceChannel) OnLeave(channel string, member *types.Member) {
-	this.io.BroadcastTo(channel, `presence:leaving`, channel, member)
+// On Leave emitter.
+func (pch *PresenceChannel) OnLeave(channel string, member *types.Member) {
+	pch.io.To(socket.Room(channel)).Emit("presence:leaving", channel, member)
 }
 
-/**
- * On subscribed event emitter.
- */
-func (this *PresenceChannel) OnSubscribed(socket socketio.Socket, channel string, members []*types.Member) {
-	socket.Emit(`presence:subscribed`, channel, members)
+// On subscribed event emitter.
+func (pch *PresenceChannel) OnSubscribed(_socket *socket.Socket, channel string, members types.Members) {
+	pch.io.To(socket.Room(_socket.Id())).Emit("presence:subscribed", channel, members)
 }
