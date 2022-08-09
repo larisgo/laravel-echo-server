@@ -28,11 +28,11 @@ if /i "%BUILDTAGS%"=="" (Set BUILDTAGS=release)
 
 :deps
     CALL go mod tidy -v
-    CALL go mod vendor -v
+    rem CALL go mod vendor -v
     GOTO :EOF
 
 :fmt
-    CALL go fmt -mod=mod github.com/larisgo/laravel-echo-server/...
+    CALL go fmt -mod=mod ./...
     GOTO :EOF
 
 :static-server
@@ -71,7 +71,7 @@ if /i "%BUILDTAGS%"=="" (Set BUILDTAGS=release)
     GOTO :EOF
 
 :clean
-    CALL go clean -mod=mod -r github.com/larisgo/laravel-echo-server/...
+    CALL go clean -mod=mod -r ./...
 
 :run
     Set GOOS=

@@ -10,10 +10,10 @@ default: all
 
 deps:
 	go mod tidy -v
-	go mod vendor -v
+# 	go mod vendor -v
 
 fmt:
-	go fmt -mod=mod github.com/larisgo/laravel-echo-server/...
+	go fmt -mod=mod ./...
 
 static-server:
 	CGO_ENABLED=0 go install --tags '$(BUILDTAGS)' -ldflags '-s -w -extldflags "-static"' -mod=mod github.com/larisgo/laravel-echo-server/main/laravel-echo-server
@@ -30,7 +30,7 @@ all: fmt server
 static-all: fmt static-server
 
 clean:
-	go clean -mod=mod -r github.com/larisgo/laravel-echo-server/...
+	go clean -mod=mod -r ./...
 
 run:
 	GOOS="" GOARCH="" go install -mod=mod github.com/larisgo/laravel-echo-server/main/laravel-echo-server
