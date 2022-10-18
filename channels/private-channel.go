@@ -33,21 +33,19 @@ func NewPrivateChannel(_options *options.Config) *PrivateChannel {
 }
 
 // Send authentication request to application server.
-func (pch *PrivateChannel) Authenticate(_socket *socket.Socket, data *types.Data) (interface{}, int, error) {
+func (pch *PrivateChannel) Authenticate(_socket *socket.Socket, data *types.Data) (any, int, error) {
 	body, err := json.Marshal(map[string]string{
 		"channel_name": data.Channel,
 	})
 	if err != nil {
 		return nil, http.StatusInternalServerError, err
 	}
+	data.Auth.Headers["Content-Type"] = "application/json; charset=UTF-8"
 	options := &_http.Options{
-		Method: http.MethodPost,
-		Headers: (func() map[string]string {
-			data.Auth.Headers["Content-Type"] = "application/json; charset=UTF-8"
-			return data.Auth.Headers
-		})(),
-		Url:  pch.authHost(_socket) + pch.options.AuthEndpoint,
-		Body: bytes.NewReader(body),
+		Method:  http.MethodPost,
+		Headers: data.Auth.Headers,
+		Url:     pch.authHost(_socket) + pch.options.AuthEndpoint,
+		Body:    bytes.NewReader(body),
 	}
 
 	if pch.options.DevMode {
@@ -76,7 +74,7 @@ func (pch *PrivateChannel) authHost(_socket *socket.Socket) string {
 		authHostSelected = authHosts[0]
 	}
 
-	if r := _socket.Request().Headers().Get("Referer"); r != "" {
+	if r := _socket.Request().Headers().Peek("Referer"); r != "" {
 		if referer, err := url.Parse(r); err != nil {
 			for _, authHost := range authHosts {
 				authHostSelected = authHost
@@ -102,7 +100,7 @@ func (pch *PrivateChannel) hasMatchingHost(referer *url.URL, host string) bool {
 }
 
 // Send a request to the server.
-func (pch *PrivateChannel) serverRequest(_socket *socket.Socket, options *_http.Options, channel_name string) (interface{}, int, error) {
+func (pch *PrivateChannel) serverRequest(_socket *socket.Socket, options *_http.Options, channel_name string) (any, int, error) {
 	options.Headers = pch.prepareHeaders(_socket, options)
 	response, err := pch.client.Request(options)
 	if err != nil {
@@ -140,7 +138,7 @@ func (pch *PrivateChannel) serverRequest(_socket *socket.Socket, options *_http.
 // Prepare headers for request to app server.
 func (pch *PrivateChannel) prepareHeaders(_socket *socket.Socket, options *_http.Options) map[string]string {
 	if cookie, HasCookie := options.Headers[`Cookie`]; !HasCookie || cookie == "" {
-		if c := _socket.Request().Headers().Get("Cookie"); c != "" {
+		if c := _socket.Request().Headers().Peek("Cookie"); c != "" {
 			options.Headers[`Cookie`] = c
 		}
 	}

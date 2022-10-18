@@ -86,7 +86,7 @@ func (api *HttpApi) GetStatus(w http.ResponseWriter, r *http.Request, router htt
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	data, err := json.Marshal(map[string]interface{}{
+	data, err := json.Marshal(map[string]any{
 		"subscription_count": api.io.Engine().ClientsCount(),
 		"uptime":             time.Since(startTime),
 		"memory_usage":       m.TotalAlloc,
@@ -108,8 +108,8 @@ func (api *HttpApi) GetStatus(w http.ResponseWriter, r *http.Request, router htt
 func (api *HttpApi) GetChannels(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	prefix := r.URL.Query().Get("filter_by_prefix")
 	rooms := api.io.Sockets().Adapter().Rooms()
-	channels := map[socket.Room]map[string]interface{}{}
-	rooms.Range(func(channelName, sockets interface{}) bool {
+	channels := map[socket.Room]map[string]any{}
+	rooms.Range(func(channelName, sockets any) bool {
 		cn := channelName.(socket.Room)
 		ss := sockets.(*types.Set[socket.SocketId])
 		if ss.Has(socket.SocketId(cn)) {
@@ -118,14 +118,14 @@ func (api *HttpApi) GetChannels(w http.ResponseWriter, r *http.Request, _ httpro
 		if prefix != "" && strings.Index(string(cn), prefix) != 0 {
 			return true
 		}
-		channels[cn] = map[string]interface{}{
+		channels[cn] = map[string]any{
 			"subscription_count": ss.Len(),
 			"occupied":           true,
 		}
 		return true
 	})
 
-	data, err := json.Marshal(map[string]interface{}{
+	data, err := json.Marshal(map[string]any{
 		"channels": channels,
 	})
 	if err != nil {
@@ -148,7 +148,7 @@ func (api *HttpApi) GetChannel(w http.ResponseWriter, r *http.Request, router ht
 	if sockets, ok := api.io.Sockets().Adapter().Rooms().Load(socket.Room(channelName)); ok {
 		subscriptionCount = sockets.(*types.Set[socket.SocketId]).Len()
 	}
-	result := map[string]interface{}{
+	result := map[string]any{
 		"subscription_count": subscriptionCount,
 		"occupied":           subscriptionCount > 0,
 	}
@@ -201,7 +201,7 @@ func (api *HttpApi) GetChannelUsers(w http.ResponseWriter, r *http.Request, rout
 		users = append(users, member.UserId)
 	}
 
-	data, err := json.Marshal(map[string]interface{}{
+	data, err := json.Marshal(map[string]any{
 		"users": users,
 	})
 	if err != nil {
@@ -220,7 +220,7 @@ func (api *HttpApi) GetChannelUsers(w http.ResponseWriter, r *http.Request, rout
 func (api *HttpApi) badResponse(w http.ResponseWriter, r *http.Request, message string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusBadRequest)
-	data, _ := json.Marshal(map[string]interface{}{
+	data, _ := json.Marshal(map[string]any{
 		"error": message,
 	})
 	w.Write(data)

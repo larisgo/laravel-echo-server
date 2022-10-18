@@ -71,7 +71,7 @@ func (sub *HttpSubscriber) handleData(w http.ResponseWriter, r *http.Request, ro
 		return
 	}
 	if (len(body.Channels) > 0 || body.Channel != "") && body.Name != "" && body.Data != "" {
-		var data interface{}
+		var data any
 		if err := json.Unmarshal([]byte(body.Data), &data); err != nil {
 			sub.badResponse(w, r, err.Error())
 			return
@@ -110,7 +110,7 @@ func (sub *HttpSubscriber) handleData(w http.ResponseWriter, r *http.Request, ro
 func (sub *HttpSubscriber) badResponse(w http.ResponseWriter, r *http.Request, message string) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusBadRequest)
-	data, _ := json.Marshal(map[string]interface{}{
+	data, _ := json.Marshal(map[string]any{
 		"error": message,
 	})
 	w.Write(data)

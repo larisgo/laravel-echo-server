@@ -6,7 +6,7 @@ type DatabaseDriver interface {
 	Get(string) ([]byte, error)
 
 	// Set a value to the database.
-	Set(string, interface{}) error
+	Set(string, any) error
 
 	Close() error
 }

@@ -57,7 +57,7 @@ func (db *RedisDatabase) Get(key string) ([]byte, error) {
 }
 
 // Store data to cache.
-func (db *RedisDatabase) Set(key string, value interface{}) error {
+func (db *RedisDatabase) Set(key string, value any) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -66,8 +66,8 @@ func (db *RedisDatabase) Set(key string, value interface{}) error {
 		return err
 	}
 	if db.options.DatabaseConfig.PublishPresence == true && regexp.MustCompile(`^presence-.*:members$`).MatchString(key) {
-		result, err := json.Marshal(map[string]map[string]interface{}{
-			"event": map[string]interface{}{
+		result, err := json.Marshal(map[string]map[string]any{
+			"event": map[string]any{
 				"channel": key,
 				"members": value,
 			},

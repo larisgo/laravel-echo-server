@@ -11,10 +11,10 @@ import (
 type Output interface {
 
 	// Printf applies format (renders styles) and writes to output
-	Printf(msg string, args ...interface{})
+	Printf(msg string, args ...any)
 
 	// Sprintf applies format (renders styles) and returns as string
-	Sprintf(msg string, args ...interface{}) string
+	Sprintf(msg string, args ...any) string
 
 	// Writer returns the `io.Writer` used by this output
 	Writer() io.Writer
@@ -36,11 +36,11 @@ func NewDefaultOutput(io io.Writer) *DefaultOutput {
 	}
 }
 
-func (o *DefaultOutput) Printf(msg string, args ...interface{}) {
+func (o *DefaultOutput) Printf(msg string, args ...any) {
 	o.io.Write([]byte(o.Sprintf(msg, args...)))
 }
 
-func (o *DefaultOutput) Sprintf(msg string, args ...interface{}) string {
+func (o *DefaultOutput) Sprintf(msg string, args ...any) string {
 	return fmt.Sprintf(msg, args...)
 }
 

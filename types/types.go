@@ -9,17 +9,17 @@ type Auth struct {
 }
 
 type Data struct {
-	Channel string      `json:"channel" mapstructure:"channel"`
-	Event   string      `json:"event" mapstructure:"event"`
-	Data    interface{} `json:"data" mapstructure:"data"`
-	Auth    Auth        `json:"auth" mapstructure:"auth"`
-	Socket  string      `json:"socket" mapstructure:"socket"`
+	Channel string `json:"channel" mapstructure:"channel"`
+	Event   string `json:"event" mapstructure:"event"`
+	Data    any    `json:"data" mapstructure:"data"`
+	Auth    Auth   `json:"auth" mapstructure:"auth"`
+	Socket  string `json:"socket" mapstructure:"socket"`
 }
 
 type Member struct {
 	SocketId socket.SocketId `json:"socket_id"`
 	UserId   uint64          `json:"user_id"`
-	UserInfo interface{}     `json:"user_info"`
+	UserInfo any             `json:"user_info"`
 }
 
 type Members []*Member

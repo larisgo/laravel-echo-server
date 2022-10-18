@@ -67,7 +67,7 @@ func (db *SQLiteDatabase) Get(key string) ([]byte, error) {
 }
 
 // Store data to cache.
-func (db *SQLiteDatabase) Set(key string, value interface{}) error {
+func (db *SQLiteDatabase) Set(key string, value any) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return err

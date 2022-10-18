@@ -201,22 +201,22 @@ func (ec *EchoServer) ToAll(channel string, message *types.Data) error {
 
 // On server connection.
 func (ec *EchoServer) OnConnect() {
-	ec.server.Io.On("connection", func(clients ...interface{}) {
+	ec.server.Io.On("connection", func(clients ...any) {
 		client := clients[0].(*socket.Socket)
 		ec.OnSubscribe(client)
 		ec.OnUnsubscribe(client)
 		ec.OnDisconnecting(client)
 		ec.OnClientEvent(client)
 	})
-	ec.server.Io.On("error", func(errs ...interface{}) {
-		// errs = append(errs, (interface{})(""))
+	ec.server.Io.On("error", func(errs ...any) {
+		// errs = append(errs, (any)(""))
 		utils.Log().Error("%v", errs[0])
 	})
 }
 
 // On subscribe to a channel.
 func (ec *EchoServer) OnSubscribe(_socket *socket.Socket) {
-	_socket.On("subscribe", func(msgs ...interface{}) {
+	_socket.On("subscribe", func(msgs ...any) {
 		var data *types.Data
 		if err := mapstructure.Decode(msgs[0], &data); err != nil {
 			utils.Log().Error("OnSubscribe error: %v", err)
@@ -228,7 +228,7 @@ func (ec *EchoServer) OnSubscribe(_socket *socket.Socket) {
 
 // On unsubscribe from a channel.
 func (ec *EchoServer) OnUnsubscribe(_socket *socket.Socket) {
-	_socket.On("unsubscribe", func(msgs ...interface{}) {
+	_socket.On("unsubscribe", func(msgs ...any) {
 		var data *types.Data
 		if err := mapstructure.Decode(msgs[0], &data); err != nil {
 			utils.Log().Error("OnUnsubscribe error: %v", err)
@@ -240,7 +240,7 @@ func (ec *EchoServer) OnUnsubscribe(_socket *socket.Socket) {
 
 // On socket disconnecting.
 func (ec *EchoServer) OnDisconnecting(_socket *socket.Socket) {
-	_socket.On("disconnect", func(reasons ...interface{}) {
+	_socket.On("disconnect", func(reasons ...any) {
 		for _, room := range _socket.Rooms().Keys() {
 			ec.channel.Leave(_socket, string(room), reasons[0].(string))
 		}
@@ -249,7 +249,7 @@ func (ec *EchoServer) OnDisconnecting(_socket *socket.Socket) {
 
 // On client events.
 func (ec *EchoServer) OnClientEvent(_socket *socket.Socket) {
-	_socket.On("client event", func(msgs ...interface{}) {
+	_socket.On("client event", func(msgs ...any) {
 		var data *types.Data
 		if err := mapstructure.Decode(msgs[0], &data); err != nil {
 			utils.Log().Error("OnClientEvent error: %v", err)

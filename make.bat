@@ -22,6 +22,8 @@ if /i "%args%"=="run" goto %args%
 
 if /i "%BUILDTAGS%"=="" (Set BUILDTAGS=release)
 
+goto default
+
 :default
     CALL :all
     GOTO :EOF
@@ -76,5 +78,5 @@ if /i "%BUILDTAGS%"=="" (Set BUILDTAGS=release)
 :run
     Set GOOS=
     Set GOARCH=
-    CALL go install -mod=mod github.com/larisgo/laravel-echo-server/main/laravel-echo-server
+    CALL go install -mod=mod -race github.com/larisgo/laravel-echo-server/main/laravel-echo-server
     CALL "vendor\bin\laravel-echo-server.exe"

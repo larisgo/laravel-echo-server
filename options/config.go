@@ -43,13 +43,13 @@ type ApiOriginAllow struct {
 }
 
 type Config struct {
-	AuthHost       interface{}       `json:"authHost"`
+	AuthHost       any               `json:"authHost"`
 	AuthEndpoint   string            `json:"authEndpoint"`
 	Clients        []Client          `json:"clients"`
 	Database       string            `json:"database"`
 	DatabaseConfig DatabaseConfig    `json:"databaseConfig"`
 	DevMode        bool              `json:"devMode"`
-	Host           interface{}       `json:"host"`
+	Host           any               `json:"host"`
 	Port           string            `json:"port"`
 	Protocol       string            `json:"protocol"`
 	Socketio       *ServerOptions    `json:"socketio"`
