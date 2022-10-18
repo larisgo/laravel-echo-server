@@ -19,6 +19,7 @@ if /i "%args%"=="release-all" goto %args%
 if /i "%args%"=="all" goto %args%
 if /i "%args%"=="static-all" goto %args%
 if /i "%args%"=="run" goto %args%
+if /i "%args%"=="test" goto %args%
 
 if /i "%BUILDTAGS%"=="" (Set BUILDTAGS=release)
 
@@ -80,3 +81,8 @@ goto default
     Set GOARCH=
     CALL go install -mod=mod -race github.com/larisgo/laravel-echo-server/main/laravel-echo-server
     CALL "vendor\bin\laravel-echo-server.exe"
+
+:test
+    CALL go clean -testcache
+    CALL go test -race -cover -covermode=atomic -mod=mod ./...
+    GOTO :EOF

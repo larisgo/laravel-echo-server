@@ -1,4 +1,4 @@
-.PHONY: default static-server deps fmt server static-release-all release-all all static-all run
+.PHONY: default static-server deps fmt server static-release-all release-all all static-all run test
 export GOPATH:=$(shell pwd)/vendor
 # Set the GOPROXY environment variable
 export GOPROXY=https://goproxy.io,direct
@@ -35,3 +35,7 @@ clean:
 run:
 	GOOS="" GOARCH="" go install -mod=mod github.com/larisgo/laravel-echo-server/main/laravel-echo-server
 	vendor/bin/laravel-echo-server
+
+test:
+	go clean -testcache
+	go test -race -cover -covermode=atomic -mod=mod -v ./...
