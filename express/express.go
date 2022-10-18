@@ -1,12 +1,13 @@
 package express
 
 import (
-	"github.com/julienschmidt/httprouter"
-	"github.com/larisgo/laravel-echo-server/options"
-	"github.com/zishang520/engine.io/types"
 	"io"
 	"net/http"
 	"sync"
+
+	"github.com/julienschmidt/httprouter"
+	"github.com/larisgo/laravel-echo-server/options"
+	"github.com/zishang520/engine.io/types"
 )
 
 type Next func(http.ResponseWriter, *http.Request, func())

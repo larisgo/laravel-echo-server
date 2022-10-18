@@ -2,6 +2,7 @@ package channels
 
 import (
 	"encoding/json"
+
 	"github.com/larisgo/laravel-echo-server/database"
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/larisgo/laravel-echo-server/types"

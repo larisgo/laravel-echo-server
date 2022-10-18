@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+
 	"github.com/larisgo/laravel-echo-server/options"
 )
 

@@ -1,9 +1,10 @@
 package options
 
 import (
+	"time"
+
 	"github.com/zishang520/engine.io/types"
 	"github.com/zishang520/socket.io/socket"
-	"time"
 )
 
 type ServerOptions struct {

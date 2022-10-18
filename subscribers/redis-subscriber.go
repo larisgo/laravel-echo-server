@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/larisgo/laravel-echo-server/types"
 	"github.com/zishang520/engine.io/utils"
-	"strings"
 )
 
 type RedisSubscriber struct {

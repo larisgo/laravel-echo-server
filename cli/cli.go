@@ -5,13 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/joho/godotenv"
-	"github.com/larisgo/laravel-echo-server/echo"
-	"github.com/larisgo/laravel-echo-server/options"
-	"github.com/larisgo/laravel-echo-server/std"
-	"github.com/larisgo/laravel-echo-server/types"
-	_utils "github.com/larisgo/laravel-echo-server/utils"
-	"github.com/zishang520/engine.io/utils"
 	"io/ioutil"
 	"os"
 	"os/signal"
@@ -20,6 +13,14 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
+
+	"github.com/joho/godotenv"
+	"github.com/larisgo/laravel-echo-server/echo"
+	"github.com/larisgo/laravel-echo-server/options"
+	"github.com/larisgo/laravel-echo-server/std"
+	"github.com/larisgo/laravel-echo-server/types"
+	_utils "github.com/larisgo/laravel-echo-server/utils"
+	"github.com/zishang520/engine.io/utils"
 )
 
 type Cli struct {

@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"compress/flate"
 	"compress/gzip"
-	"github.com/andybalholm/brotli"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/andybalholm/brotli"
 )
 
 type Response struct {

@@ -1,6 +1,8 @@
 package echo
 
 import (
+	"sync"
+
 	"github.com/larisgo/laravel-echo-server/api"
 	"github.com/larisgo/laravel-echo-server/channels"
 	"github.com/larisgo/laravel-echo-server/options"
@@ -11,7 +13,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/zishang520/engine.io/utils"
 	"github.com/zishang520/socket.io/socket"
-	"sync"
 )
 
 type EchoServer struct {

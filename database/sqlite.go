@@ -3,12 +3,13 @@ package database
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/larisgo/laravel-echo-server/options"
-	"github.com/larisgo/laravel-echo-server/utils"
-	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/larisgo/laravel-echo-server/options"
+	"github.com/larisgo/laravel-echo-server/utils"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type SQLiteDatabase struct {

@@ -3,14 +3,15 @@ package subscribers
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"net/http"
+	"strings"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/larisgo/laravel-echo-server/express"
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/larisgo/laravel-echo-server/types"
 	"github.com/zishang520/engine.io/utils"
-	"io"
-	"net/http"
-	"strings"
 )
 
 type HttpSubscriber struct {
@@ -22,6 +23,7 @@ type HttpSubscriber struct {
 	options *options.Config
 
 	_close bool
+	mu     sync.RWMutex
 }
 
 // Create new instance of http subscriber.
@@ -37,7 +39,8 @@ func NewHttpSubscriber(express *express.Express, _options *options.Config) Subsc
 func (sub *HttpSubscriber) Subscribe(callback Broadcast) {
 	// Broadcast a message to a channel
 	sub.express.Route().POST("/apps/:appId/events", sub.express.AuthorizeRequests(func(w http.ResponseWriter, r *http.Request, router httprouter.Params) {
-		if sub._close {
+
+		if sub.unSubscribed() {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write(nil)
 		} else {
@@ -50,7 +53,17 @@ func (sub *HttpSubscriber) Subscribe(callback Broadcast) {
 
 // Unsubscribe from events to broadcast.
 func (sub *HttpSubscriber) UnSubscribe() {
+	sub.mu.Lock()
+	defer sub.mu.Unlock()
+
 	sub._close = true
+}
+
+func (sub *HttpSubscriber) unSubscribed() bool {
+	sub.mu.RLock()
+	defer sub.mu.RUnlock()
+
+	return sub._close
 }
 
 // Handle incoming event data.

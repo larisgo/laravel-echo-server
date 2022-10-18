@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+
 	"github.com/go-redis/redis/v8"
 	"github.com/larisgo/laravel-echo-server/options"
-	"regexp"
 )
 
 type RedisDatabase struct {

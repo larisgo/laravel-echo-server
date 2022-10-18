@@ -1,12 +1,13 @@
 package channels
 
 import (
+	"regexp"
+	"strings"
+
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/larisgo/laravel-echo-server/types"
 	"github.com/zishang520/engine.io/utils"
 	"github.com/zishang520/socket.io/socket"
-	"regexp"
-	"strings"
 )
 
 type Channel struct {

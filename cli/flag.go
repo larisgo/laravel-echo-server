@@ -3,10 +3,11 @@ package cli
 import (
 	"flag"
 	"fmt"
-	"github.com/larisgo/laravel-echo-server/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/larisgo/laravel-echo-server/utils"
 )
 
 // const usage1 string = `Usage: laravel-echo-server [OPTIONS] <local port or address>

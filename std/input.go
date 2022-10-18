@@ -4,13 +4,14 @@ package std
 import (
 	"bufio"
 	"fmt"
-	"github.com/gookit/color"
 	"io"
 	"os"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/gookit/color"
 )
 
 // Input is an interface for input helping. It provides shorthand methods for

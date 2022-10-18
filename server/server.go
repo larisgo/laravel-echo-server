@@ -2,12 +2,13 @@ package server
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/larisgo/laravel-echo-server/express"
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/zishang520/engine.io/types"
 	"github.com/zishang520/engine.io/utils"
 	"github.com/zishang520/socket.io/socket"
-	"net/http"
 )
 
 type Server struct {

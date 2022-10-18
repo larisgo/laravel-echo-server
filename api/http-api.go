@@ -2,6 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
+	"runtime"
+	"strings"
+	"time"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/larisgo/laravel-echo-server/channels"
 	"github.com/larisgo/laravel-echo-server/express"
@@ -9,11 +15,6 @@ import (
 	"github.com/zishang520/engine.io/types"
 	"github.com/zishang520/engine.io/utils"
 	"github.com/zishang520/socket.io/socket"
-	"io"
-	"net/http"
-	"runtime"
-	"strings"
-	"time"
 )
 
 var startTime time.Time

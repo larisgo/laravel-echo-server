@@ -1,9 +1,10 @@
 package main
 
 import (
+	"os"
+
 	"github.com/larisgo/laravel-echo-server/cli"
 	"github.com/zishang520/engine.io/utils"
-	"os"
 )
 
 func main() {
