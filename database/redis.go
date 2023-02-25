@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/larisgo/laravel-echo-server/options"
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisDatabase struct {

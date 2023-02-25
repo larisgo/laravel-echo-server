@@ -5,9 +5,9 @@ pushd "%~dp0"
 setlocal ENABLEDELAYEDEXPANSION
 set GOPATH="%~dp0vendor"
 rem Set the GOPROXY environment variable
-Set GOPROXY=https://goproxy.io,direct
-rem set http_proxy=socks5://127.0.0.1:1080
-rem set https_proxy=%http_proxy%
+Set GOPROXY=https://proxy.golang.org,direct
+set http_proxy=socks5://127.0.0.1:1080
+set https_proxy=%http_proxy%
 
 if /i "%args%"=="default" goto %args%
 if /i "%args%"=="static-server" goto %args%

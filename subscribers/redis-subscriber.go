@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/larisgo/laravel-echo-server/options"
 	"github.com/larisgo/laravel-echo-server/types"
+	"github.com/redis/go-redis/v9"
 	"github.com/zishang520/engine.io/utils"
 )
 
